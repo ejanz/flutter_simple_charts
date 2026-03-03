@@ -10,12 +10,21 @@ For general information about developing packages, see the Dart guide for
 and the Flutter guide for
 [developing packages and plugins](https://flutter.dev/to/develop-packages).
 -->
+# flutter_simple_charts
 
 A very simple donut and bar chart package, lightweight and easy to use
 
 ## Features
 
 The flutter_simple_charts offers two types of charts: donut and bar charts.
+
+- **Donut chart** - Very simple, lightweight and easy to use;
+'''dart
+
+'''
+
+
+- **Bar chart** - Very simple, lightweight and easy to use;
 
 ### Screenshots
 
@@ -26,73 +35,7 @@ The flutter_simple_charts offers two types of charts: donut and bar charts.
 
 </div>
 
-
-
 ## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
-
-## Usage
-
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
-
-```dart
-const like = 'sample';
-```
-
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
-
-# flutter_simple_charts
-
-
-[![Platform: Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com/)
-[![Platform: WEB](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com/)
-
-## Features
-
-- **Android Only** - Optimized specifically for Android
-- **Simple API** - Easy-to-use Dart interface with Pigeon type safety
-- **Token Streaming** - Real-time token generation with EventChannel
-- **Stop Generation** - Cancel text generation mid-process on Android devices
-- **18 Parameters** - Complete control: temperature, penalties, mirostat, seed, and more
-- **7 Chat Templates** - ChatML, Llama-2, Alpaca, Vicuna, Phi, Gemma, Zephyr
-- **Auto-Detection** - Chat templates detected from model filename
-- **Latest llama.cpp** - Built on October 2025 llama.cpp (no patches needed)
-- **ARM64 Optimized** - NEON and dot product optimizations enabled
-
-## Local Chat App
-
-The plugin includes a complete example chat application that demonstrates how to integrate the plugin into a real application. The example app showcases:
-
-- **Load Model from Local Storage** - Select and load GGUF models directly from your device storage
-- **Context Size Real Time Update** - Monitor and adjust context usage in real-time with visual indicators
-- **Advanced Parameters** - Full control over model parameters including Temperature Control, Top-P, Top-K, and more
-- **Auto Unload Model** - Automatic model unloading when inactivity is detected to preserve device resources
-
-An APK of the example app is available in the [example-app](https://github.com/dragneel2074/Llama-Flutter/tree/master/example-app) Github for immediate testing.
-
-
-### Screenshots
-
-<div align="center">
-
-![Home Screen](images/home.jpeg) | ![App Settings](images/app_settings.jpeg) | ![App Settings 1](images/app_settings1.jpeg)
-:---:|:---:|:---:
-
-</div>
-
-## Requirements
-
-- Flutter 3.24.0+
-- Dart SDK 3.3.0+
-- Android API 26+ (Android 8.0)
-- NDK r27+ (for 16KB page size support)
 
 ## Installation
 
@@ -100,7 +43,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  llama_flutter_android: latest
+  flutter_simple_charts: latest
 ```
 
 ## Quick Start
@@ -108,157 +51,100 @@ dependencies:
 ### Basic Usage
 
 ```dart
-import 'package:llama_flutter_android/llama_flutter_android.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_simple_charts/flutter_simple_charts.dart';
 
-// Initialize controller
-final controller = LlamaController();
+void main() {
+  runApp(const MyApp());
+}
 
-// Load model
-await controller.loadModel(
-  modelPath: '/path/to/model.gguf',
-  nThreads: 4,
-  contextSize: 2048,
-);
+List<DataItem> itens = [
+  DataItem(id: 0, label: 'Oranges', value: 210),
+  DataItem(id: 1, label: 'Apples', value: 195),
+  DataItem(id: 2, label: 'Bananas', value: 65),
+  DataItem(id: 3, label: 'Pears', value: 155),
+  DataItem(id: 4, label: 'Strawberries', value: 97),
+  DataItem(id: 5, label: 'Watermelons', value: 52),
+  DataItem(id: 6, label: 'Pineapples', value: 119),
+];
 
-// Generate text with streaming
-StreamSubscription? subscription;
-subscription = controller.generate(
-  prompt: 'Write a story about a robot',
-  maxTokens: 512,
-  temperature: 0.7,
-).listen(
-  (token) => print(token),  // Print each token as it arrives
-  onDone: () => print('Generation complete!'),
-  onError: (error) => print('Error: $error'),
-);
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
-// Stop generation mid-process (critical for UX!)
-await controller.stop();
-subscription?.cancel();
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Charts Demo',
+      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.indigo)),
+      home: MainPage(),
+    );
+  }
+}
 
-// Clean up
-await controller.dispose();
+class MainPage extends StatelessWidget {
+  const MainPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text('Flutter Single Charts'),
+      ),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              DonutChart(
+                title: 'Fruits Donut chart',
+                dataset: itens,
+                showLabels: false,
+                showLegend: true,
+                datasetOrdering: DatasetOrdering.decrescent,
+                onSectorTap: (sectorValue) => _showDialog(
+                  'Item: ${sectorValue.label} - Quantity: ${sectorValue.value}',
+                  context,
+                ),
+              ),
+              BarChart(
+                title: 'Fruits Bar chart',
+                dataset: itens,
+                showLabels: true,
+                showLegend: true,
+                datasetOrdering: DatasetOrdering.decrescent,
+                onBarTap: (barValue) => _showDialog(
+                  'Item: ${barValue.label} - Quantity: ${barValue.value}',
+                  context,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+void _showDialog(String message, BuildContext context) {
+  showDialog<void>(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('Flutter Single Chart'),
+        content: Text(message),
+        actions: <Widget>[
+          TextButton(
+            style: TextButton.styleFrom(
+              textStyle: Theme.of(context).textTheme.labelLarge,
+            ),
+            child: const Text('Close'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
 ```
-
-### Chat Mode with Templates
-
-```dart
-// Chat with automatic template formatting
-controller.generateChat(
-  messages: [
-    ChatMessage(role: 'system', content: 'You are a helpful assistant'),
-    ChatMessage(role: 'user', content: 'Explain quantum computing'),
-  ],
-  template: 'chatml', // Auto-detected if null
-  temperature: 0.7,
-  maxTokens: 1000,
-).listen((token) => print(token));
-```
-
-### Advanced Parameters
-
-```dart
-// Fine-grained control over generation
-controller.generate(
-  prompt: 'Explain machine learning',
-  maxTokens: 1000,
-  // Sampling
-  temperature: 0.8,      // Creativity (0.0-2.0)
-  topP: 0.9,             // Nucleus sampling
-  topK: 40,              // Top-K sampling
-  minP: 0.05,            // Minimum probability
-  // Penalties (reduce repetition)
-  repeatPenalty: 1.2,    // Penalize repeated tokens
-  frequencyPenalty: 0.5, // Penalize frequent tokens
-  presencePenalty: 0.3,  // Penalize token presence
-  repeatLastN: 64,       // Penalty window size
-  // Reproducibility
-  seed: 42,              // Fixed seed for same output
-  // Mirostat (perplexity control)
-  mirostat: 2,           // 0=off, 1=v1, 2=v2
-  mirostatTau: 5.0,      // Target perplexity
-  mirostatEta: 0.1,      // Learning rate
-).listen((token) => print(token));
-
-// Stop anytime!
-await controller.stop();
-```
-
-## Architecture
-
-```
-         Flutter App (Dart)
-                ↓
-    llama_flutter_android.dart
-    (User-facing API)
-                ↓
-    Pigeon Generated Code
-    (Type-safe bridge)
-                ↓
-    LlamaFlutterAndroidPlugin.kt
-    (Kotlin coroutines)
-                ↓
-    InferenceService.kt
-    (Foreground service)
-                ↓
-    jni_wrapper.cpp
-    (JNI bridge)
-                ↓
-    llama.cpp
-    (Native inference)
-```
-
-## API Reference
-
-### LlamaController
-
-The main interface for working with llama.cpp models.
-
-**Methods:**
-- `loadModel()` - Load a GGUF model file
-- `generate()` - Generate text with streaming tokens
-- `generateChat()` - Generate chat responses with template formatting
-- `stop()` - Stop generation mid-process
-- `dispose()` - Clean up resources
-
-**Parameters:**
-- Basic: `maxTokens`, `seed`
-- Sampling: `temperature`, `topP`, `topK`, `minP`, `typicalP`
-- Penalties: `repeatPenalty`, `frequencyPenalty`, `presencePenalty`, `repeatLastN`, `penalizeNl`
-- Mirostat: `mirostat`, `mirostatTau`, `mirostatEta`
-- Advanced: `tfsZ`, `locallyTypical`
-
-**Supported Chat Templates:**
-- `chatml` - ChatML format (default)
-- `llama2` - Llama-2 format
-- `alpaca` - Alpaca format
-- `vicuna` - Vicuna format
-- `phi` - Phi format
-- `gemma` - Gemma format
-- `zephyr` - Zephyr format
-
-### Release Build Notes
-
-If the release app crashes, try these solutions in `android/app/build.gradle`:
-- Enable MaxHeap: Add `android:largeHeap="true"` to the application manifest
-- Disable minification and shrinking: Set `minifyEnabled false` and `shrinkResources false` in release build settings
-
-
-## Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Credits
-
-- [llama.cpp](https://github.com/ggerganov/llama.cpp) - The amazing inference engine
-- [Pigeon](https://pub.dev/packages/pigeon) - Type-safe platform communication
-
-## Support
-
-- [Issue Tracker](https://github.com/dragneel2074/Llama-Flutter/issues)
-- 💬 [Discussions](https://github.com/dragneel2074/Llama-Flutter/discussions)
-- 📦 [Example App](example/) - Complete working example

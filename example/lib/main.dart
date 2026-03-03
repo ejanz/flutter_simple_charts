@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_simple_charts/flutter_simple_charts.dart';
-import 'package:flutter_simple_charts/utils/enums.dart';
-import 'package:flutter_simple_charts/utils/types.dart';
 
 void main() {
   runApp(const MyApp());
