@@ -40,32 +40,34 @@ class MainPage extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text('Flutter Single Charts'),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            DonutChart(
-              title: 'Fruits Donnut chart',
-              dataset: itens,
-              showLabels: false,
-              showLegend: false,
-              datasetOrdering: DatasetOrdering.decrescent,
-              onSectorTap: (sectorValue) => _showDialog(
-                'Item: ${sectorValue.label} - Quantity: ${sectorValue.value}',
-                context,
+      body: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              DonutChart(
+                title: 'Fruits Donut chart',
+                dataset: itens,
+                showLabels: false,
+                showLegend: true,
+                datasetOrdering: DatasetOrdering.decrescent,
+                onSectorTap: (sectorValue) => _showDialog(
+                  'Item: ${sectorValue.label} - Quantity: ${sectorValue.value}',
+                  context,
+                ),
               ),
-            ),
-            BarChart(
-              title: 'Fruits Bar chart',
-              dataset: itens,
-              showLabels: true,
-              showLegend: true,
-              datasetOrdering: DatasetOrdering.decrescent,
-              onBarTap: (barValue) => _showDialog(
-                'Item: ${barValue.label} - Quantity: ${barValue.value}',
-                context,
+              BarChart(
+                title: 'Fruits Bar chart',
+                dataset: itens,
+                showLabels: true,
+                showLegend: true,
+                datasetOrdering: DatasetOrdering.decrescent,
+                onBarTap: (barValue) => _showDialog(
+                  'Item: ${barValue.label} - Quantity: ${barValue.value}',
+                  context,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: SizedBox(height: 80),
