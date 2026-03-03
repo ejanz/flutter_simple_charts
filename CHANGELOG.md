@@ -1,3 +1,6 @@
-## 0.0.1
+# Changelog
+All notable changes to this project will be documented in this file.
 
-* TODO: Describe initial release.
+## [0.0.1] - 2026-03-03
+### Added
+- Initial pre-release
