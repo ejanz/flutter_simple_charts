@@ -18,13 +18,9 @@ A very simple donut and bar chart package, lightweight and easy to use
 
 The flutter_simple_charts offers two types of charts: donut and bar charts.
 
-- **Donut chart** - Very simple, lightweight and easy to use;
-'''dart
+- **Donut chart** - Very simple donut chart, lightweight and easy to use;
 
-'''
-
-
-- **Bar chart** - Very simple, lightweight and easy to use;
+- **Bar chart** - Very simple bar chart, lightweight and easy to use;
 
 ### Screenshots
 
