@@ -5,6 +5,8 @@ void main() {
   runApp(const MyApp());
 }
 
+/// Sample data for chart demonstration.
+/// Contains fruit names with their corresponding quantities.
 List<DataItem> itens = [
   DataItem(id: 0, label: 'Oranges', value: 210),
   DataItem(id: 1, label: 'Apples', value: 195),
@@ -15,7 +17,10 @@ List<DataItem> itens = [
   DataItem(id: 6, label: 'Pineapples', value: 119),
 ];
 
+/// Root widget of the application.
+/// Sets up the Material Design theme and navigation.
 class MyApp extends StatelessWidget {
+  /// Root widget of the application.
   const MyApp({super.key});
 
   @override
@@ -28,7 +33,10 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/// Main page displaying chart examples.
+/// Shows both DonutChart and BarChart widgets with interactive features.
 class MainPage extends StatelessWidget {
+  /// Main page displaying chart examples.
   const MainPage({super.key});
 
   @override
@@ -42,6 +50,10 @@ class MainPage extends StatelessWidget {
         child: SingleChildScrollView(
           child: Column(
             children: [
+              /// Donut chart displaying fruit quantities
+              /// - Shows legend but hides labels
+              /// - Sorted in descending order
+              /// - Tapping a sector shows item details in a dialog
               DonutChart(
                 title: 'Fruits Donut chart',
                 dataset: itens,
@@ -53,6 +65,11 @@ class MainPage extends StatelessWidget {
                   context,
                 ),
               ),
+
+              /// Bar chart displaying fruit quantities
+              /// - Shows both legend and labels
+              /// - Sorted in descending order
+              /// - Tapping a bar shows item details in a dialog
               BarChart(
                 title: 'Fruits Bar chart',
                 dataset: itens,
@@ -73,6 +90,11 @@ class MainPage extends StatelessWidget {
   }
 }
 
+/// Displays an alert dialog with the provided message.
+///
+/// Parameters:
+///   - [message]: The text content to display in the dialog
+///   - [context]: The build context used to show the dialog
 void _showDialog(String message, BuildContext context) {
   showDialog<void>(
     context: context,
