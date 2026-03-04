@@ -225,6 +225,7 @@ class BarChartPainter extends CustomPainter {
     }
   }
 
+  ///Draw lines in X scale
   void drawLines(Canvas canvas, Size size, double maxHeight) {
     int subDivisions = ((maxHeight - 150) / 50).toInt();
 
