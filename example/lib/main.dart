@@ -5,7 +5,7 @@ void main() {
   runApp(const MyApp());
 }
 
-/// Sample data for chart demonstration.
+/// Sample data for donut and bar charts demonstration.
 /// Contains fruit names with their corresponding quantities.
 List<DataItem> itens = [
   DataItem(id: 0, label: 'Oranges', value: 210),
