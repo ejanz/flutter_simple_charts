@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_simple_charts/utils/enums.dart';
+import 'package:flutter_simple_charts/utils/lists.dart';
 import 'package:flutter_simple_charts/utils/types.dart';
 import 'dart:math' as math;
 
@@ -17,6 +18,9 @@ import 'package:touchable/touchable.dart';
 /// - Optional connecting lines from center to labels
 /// - Tap handling for individual sectors
 /// - Optional dataset sorting (ascending/descending)
+/// - Configurable dimensions via [height], [width], and [maxWidth]
+/// - Per-item colors via [DataItem.color] or a shared [customColors] palette
+/// - Optional custom [backGroundColor]
 ///
 /// Example:
 /// ```dart
@@ -36,14 +40,19 @@ class DonutChart extends StatelessWidget {
   const DonutChart({
     super.key,
     required this.dataset,
+    this.datasetOrdering,
     this.title = '',
+    this.height,
+    this.width,
+    this.maxWidth = 600.0,
+    this.customColors = colors,
+    this.backGroundColor,
     this.showTitle = true,
     this.showCenterText = true,
     this.showLabels = true,
     this.showLegend = true,
     this.showLines = true,
     this.onSectorTap = _defaultOnTap,
-    this.datasetOrdering,
   });
 
   /// Default no-op callback for sector tap events.
@@ -53,11 +62,40 @@ class DonutChart extends StatelessWidget {
   /// Each [DataItem] represents a sector in the donut chart.
   final List<DataItem> dataset;
 
+  /// Optional sorting order for the dataset.
+  /// Can be [DatasetOrdering.crescent], [DatasetOrdering.decrescent], or null.
+  /// When null, items display in their original order.
+  final DatasetOrdering? datasetOrdering;
+
   /// The title text displayed at the top of the chart.
   /// Defaults to an empty string.
   final String title;
 
-  /// Whether to display the chart title.
+  /// The explicit height of the chart in logical pixels.
+  ///
+  /// When provided, overrides the automatic height calculation based on
+  /// screen width and legend visibility. Defaults to null (auto-calculated).
+  final double? height;
+
+  /// The explicit width of the chart in logical pixels.
+  ///
+  /// When provided, overrides the automatic width calculation based on
+  /// screen width and [maxWidth]. Defaults to null (auto-calculated).
+  final double? width;
+
+  /// The maximum width of the chart in logical pixels.
+  ///
+  /// When the screen width exceeds this value, the chart is capped at
+  /// [maxWidth]. Defaults to 600.0.
+  final double maxWidth;
+
+  /// The list of colors used to fill the donut sectors.
+  ///
+  /// Colors are assigned to items by index. If a [DataItem] has its own
+  /// [DataItem.color] set, that takes precedence over this list.
+  /// When the dataset has more items than colors, the list wraps around.
+  /// Defaults to the built-in [colors] palette.
+  final List<Color> customColors;
   /// Defaults to true.
   final bool showTitle;
 
@@ -84,14 +122,30 @@ class DonutChart extends StatelessWidget {
   /// Defaults to a no-op function.
   final Function(DataItem) onSectorTap;
 
-  /// Optional sorting order for the dataset.
-  /// Can be [DatasetOrdering.crescent], [DatasetOrdering.decrescent], or null.
-  /// When null, items display in their original order.
-  final DatasetOrdering? datasetOrdering;
-
   @override
   Widget build(BuildContext context) {
     final Size screenSize = MediaQuery.of(context).size;
+
+    double chartHeight = !showLegend
+        ? screenSize.width > maxWidth
+              ? maxWidth
+              : screenSize.width + 20
+        : screenSize.width > maxWidth
+        ? maxWidth + (dataset.length * 18) + 60
+        : screenSize.width + (dataset.length * 18) + 60;
+
+    if (height != null) {
+      chartHeight = height!;
+    }
+
+    double chartWidth = screenSize.width > maxWidth
+        ? maxWidth
+        : screenSize.width;
+
+    if (width != null) {
+      chartWidth = width!;
+    }
+
     List<DataItem> datasetOrdered = dataset;
 
     // Sort dataset if ordering is specified
@@ -105,18 +159,13 @@ class DonutChart extends StatelessWidget {
       padding: const EdgeInsets.all(2.0),
       child: Stack(
         children: [
-          SizedBox(
-            height: !showLegend
-                ? screenSize.width > 600
-                      ? 600
-                      : screenSize.width + 20
-                : screenSize.width > 600
-                ? 600 + (datasetOrdered.length * 18) + 60
-                : screenSize.width + (datasetOrdered.length * 18) + 60,
-            width: screenSize.width > 600 ? 600 : screenSize.width,
-            child: Card(
-              elevation: 15.0,
-
+          Container(
+            color:
+                backGroundColor ??
+                Theme.of(context).colorScheme.surfaceContainerLow,
+            child: SizedBox(
+              height: chartHeight,
+              width: chartWidth,
               child: CanvasTouchDetector(
                 gesturesToOverride: [GestureType.onTapDown],
                 builder: (context) => CustomPaint(
@@ -124,6 +173,8 @@ class DonutChart extends StatelessWidget {
                     datasetOrdered,
                     context,
                     title: title,
+                    customColors: customColors,
+                    backGroundColor: backGroundColor,
                     showTitle: showTitle,
                     showCenterText: showCenterText,
                     showLabels: showLabels,
@@ -161,6 +212,18 @@ class DonutChartPainter extends CustomPainter {
   /// The chart title.
   final String title;
 
+  /// The list of colors used to fill the donut sectors.
+  ///
+  /// Colors are assigned to items by index. A [DataItem] with its own
+  /// [DataItem.color] takes precedence over this list.
+  /// When the dataset has more items than colors, the list wraps around.
+  final List<Color> customColors;
+
+  /// The background color of the chart.
+  ///
+  /// If not specified, it defaults to `Theme.of(context).colorScheme.surfaceContainerLow`.
+  final Color? backGroundColor;
+
   /// Whether to show the title.
   final bool showTitle;
 
@@ -184,6 +247,8 @@ class DonutChartPainter extends CustomPainter {
     this.dataset,
     this.context, {
     this.title = '',
+    required this.customColors,
+    this.backGroundColor,
     this.showTitle = true,
     this.showCenterText = true,
     this.showLabels = true,
@@ -204,7 +269,8 @@ class DonutChartPainter extends CustomPainter {
 
     final linePaint = Paint()
       ..strokeWidth = 3.0
-      ..color = Theme.of(context).colorScheme.surfaceContainerLow
+      ..color =
+          backGroundColor ?? Theme.of(context).colorScheme.surfaceContainerLow
       ..style = PaintingStyle.fill;
 
     double total = 0.0;
@@ -228,8 +294,7 @@ class DonutChartPainter extends CustomPainter {
       drawSector(
         touchyCanvas,
         di,
-        ColorSeed.values[dataset.indexOf(di)].color,
-        rect,
+        di.color ?? customColors[dataset.indexOf(di) % customColors.length],
         startAngle,
         sweepAngle,
       );
@@ -264,9 +329,7 @@ class DonutChartPainter extends CustomPainter {
           legendPosition,
           di,
           total,
-          ColorSeed.values[dataset.indexOf(di)].color,
-        );
-        legendPosition += const Offset(0, 18);
+          di.color ?? customColors[dataset.indexOf(di) % customColors.length],
       }
       startAngle += sweepAngle;
     }
@@ -387,7 +450,6 @@ class DonutChartPainter extends CustomPainter {
       ..color = Theme.of(context).colorScheme.secondaryContainer.withAlpha(70)
       ..style = PaintingStyle.fill;
 
-    /// Draw label´s text
     drawTextCentered(
       canvas,
       position,
@@ -507,6 +569,8 @@ class DonutChartPainter extends CustomPainter {
 
   /// Measures text dimensions without painting it.
   ///
+  /// Returns a laid-out [TextPainter] that can be used to query the text size
+  /// or paint the text at a later point.
   TextPainter measureText(
     String s,
     TextStyle style,

@@ -6,11 +6,17 @@ class DataItem {
   /// The [label] of each dataset item
   String label;
 
-  /// The [value] of each dataset tiem
+  /// The [value] of each dataset item
   double value;
 
   /// Not used yet, for future updates
   bool selected;
+
+  /// An optional custom [Color] for this item.
+  ///
+  /// When provided, this color is used for the sector or bar representing
+  /// this item instead of the chart's [customColors] palette.
+  Color? color;
 
   /// Dataset type
   DataItem({
@@ -18,5 +24,6 @@ class DataItem {
     required this.label,
     required this.value,
     this.selected = false,
+    this.color,
   });
 }
