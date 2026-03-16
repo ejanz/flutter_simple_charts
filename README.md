@@ -26,8 +26,8 @@ The flutter_simple_charts offers two types of charts: donut and bar charts.
 
 <div align="center">
 
-![Donut chart](images/donut.jpg) | ![Bar chart](images/bar.jpg)
-:---:|:---:
+![Donut chart](images/donut.jpg) | ![Bar chart](images/bar.jpg) | ![Custom donut](images/custom_donut.jpg) | ![Custom bar](images/custom_bar.jpg)
+:---:|:---:|:---:|:---:
 
 </div>
 

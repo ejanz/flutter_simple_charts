@@ -5,22 +5,30 @@ void main() {
   runApp(const MyApp());
 }
 
-/// Sample data for donut and bar charts demonstration.
-/// Contains fruit names with their corresponding quantities.
+List<Color> customColors = [
+  Colors.orange.shade50,
+  Colors.orange.shade100,
+  Colors.orange.shade200,
+  Colors.orange.shade300,
+  Colors.orange.shade400,
+  Colors.orange,
+  Colors.orange.shade600,
+  Colors.orange.shade700,
+  Colors.orange.shade800,
+  Colors.orange.shade900,
+];
+
 List<DataItem> itens = [
   DataItem(id: 0, label: 'Oranges', value: 210),
   DataItem(id: 1, label: 'Apples', value: 195),
   DataItem(id: 2, label: 'Bananas', value: 65),
-  DataItem(id: 3, label: 'Pears', value: 155),
+  DataItem(id: 3, label: 'Pears', value: 155, color: Colors.black),
   DataItem(id: 4, label: 'Strawberries', value: 97),
   DataItem(id: 5, label: 'Watermelons', value: 52),
   DataItem(id: 6, label: 'Pineapples', value: 119),
 ];
 
-/// Root widget of the application.
-/// Sets up the Material Design theme and navigation.
 class MyApp extends StatelessWidget {
-  /// Root widget of the application.
   const MyApp({super.key});
 
   @override
@@ -33,10 +41,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// Main page displaying chart examples.
-/// Shows both DonutChart and BarChart widgets with interactive features.
 class MainPage extends StatelessWidget {
-  /// Main page displaying chart examples.
   const MainPage({super.key});
 
   @override
@@ -50,10 +55,6 @@ class MainPage extends StatelessWidget {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              /// Donut chart displaying fruit quantities
-              /// - Shows legend but hides labels
-              /// - Sorted in descending order
-              /// - Tapping a sector shows item details in a dialog
               DonutChart(
                 title: 'Fruits Donut chart',
                 dataset: itens,
@@ -65,13 +66,38 @@ class MainPage extends StatelessWidget {
                   context,
                 ),
               ),
-
-              /// Bar chart displaying fruit quantities
-              /// - Shows both legend and labels
-              /// - Sorted in descending order
-              /// - Tapping a bar shows item details in a dialog
               BarChart(
                 title: 'Fruits Bar chart',
+                dataset: itens,
+                showLabels: true,
+                showLegend: true,
+                datasetOrdering: DatasetOrdering.decrescent,
+                onBarTap: (barValue) => _showDialog(
+                  'Item: ${barValue.label} - Quantity: ${barValue.value}',
+                  context,
+                ),
+              ),
+              DonutChart(
+                title: 'Fruits Donut chart',
+                customColors: customColors.reversed.toList(),
+                backGroundColor: Colors.amber.shade100,
+                width: 300,
+                height: 500,
+                dataset: itens,
+                showLabels: false,
+                showLegend: true,
+                datasetOrdering: DatasetOrdering.decrescent,
+                onSectorTap: (sectorValue) => _showDialog(
+                  'Item: ${sectorValue.label} - Quantity: ${sectorValue.value}',
+                  context,
+                ),
+              ),
+              BarChart(
+                title: 'Fruits Bar chart',
+                customColors: customColors.reversed.toList(),
+                backGroundColor: Colors.amber.shade100,
+                width: 350,
+                height: 500,
                 dataset: itens,
                 showLabels: true,
                 showLegend: true,
@@ -90,11 +116,6 @@ class MainPage extends StatelessWidget {
   }
 }
 
-/// Displays an alert dialog with the provided message.
-///
-/// Parameters:
-///   - [message]: The text content to display in the dialog
-///   - [context]: The build context used to show the dialog
 void _showDialog(String message, BuildContext context) {
   showDialog<void>(
     context: context,

@@ -1,6 +1,6 @@
 name: flutter_simple_charts
 description: "A very simple donut and bar chart package, lightweight and easy to use"
-version: 0.0.2
+version: 0.0.3
 repository: https://github.com/ejanz/flutter_simple_charts
 
 environment:

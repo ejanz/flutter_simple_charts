@@ -2,42 +2,38 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_simple_charts/utils/enums.dart';
+import 'package:flutter_simple_charts/utils/lists.dart';
 import 'package:flutter_simple_charts/utils/types.dart';
 
 import 'package:touchable/touchable.dart';
 
-/// A bar chart widget that displays data segments as colored bars.
+/// A stateless widget that displays a bar chart based on the provided dataset.
 ///
-/// The [BarChart] widget visualizes a dataset as a bar chart with optional
-/// features including title, labels, legend, and interactive tap handlers.
-///
-/// Features:
-/// - Customizable title and data labels
-/// - Optional legend display
-/// - Optional connecting lines from center to labels
-/// - Tap handling for individual sectors
-/// - Optional dataset sorting (ascending/descending)
-///
-/// Example:
-/// ```dart
-/// BarChart(
-///   title: 'Sales Distribution',
-///   dataset: dataItems,
-///   showLabels: true,
-///   showLegend: true,
-///   onBarTap: (item) => print('${item.label}: ${item.value}'),
-/// )
-/// ```
+/// This widget supports customization options such as title, colors, labels, legend,
+/// and ordering of the dataset. It uses a custom painter to render the chart.
 class BarChart extends StatelessWidget {
-  /// Creates a [BarChart] widget.
+  /// Creates a BarChart widget.
   ///
-  /// The [dataset] parameter is required and must contain at least one [DataItem].
-  /// All other parameters have sensible defaults.
+  /// [dataset] is the list of data items to display.
+  /// [title] is the title of the chart.
+  /// [showTitle] determines if the title is shown.
+  /// [height] and [width] set the chart dimensions.
+  /// [maxWidth] limits the maximum width of the chart.
+  /// [customColors] provides colors for the bars.
+  /// [backGroundColor] sets the background color.
+  /// [showLabels], [showLegend], [showLines] control visibility of elements.
+  /// [onBarTap] is a callback for bar taps.
+  /// [datasetOrdering] specifies how to order the dataset.
   const BarChart({
     super.key,
     required this.dataset,
     this.title = '',
     this.showTitle = true,
+    this.height,
+    this.width,
+    this.maxWidth = 600.0,
+    this.customColors = colors,
+    this.backGroundColor,
     this.showLabels = true,
     this.showLegend = false,
     this.showLines = true,
@@ -45,47 +41,72 @@ class BarChart extends StatelessWidget {
     this.datasetOrdering,
   });
 
-  /// Default no-op callback for bar tap events.
+  /// Default tap handler that does nothing.
   static void _defaultOnTap(DataItem barValue) {}
 
-  /// The data items to display in the chart.
-  /// Each [DataItem] represents a bar in the bar chart.
+  /// The list of data items for the chart.
   final List<DataItem> dataset;
 
-  /// The title text displayed at the top of the chart.
-  /// Defaults to an empty string.
+  /// The ordering mode for the dataset.
+  final DatasetOrdering? datasetOrdering;
+
+  /// The title of the chart.
   final String title;
 
-  /// Whether to display the chart title.
-  /// Defaults to true.
+  /// The height of the chart.
+  final double? height;
+
+  /// The width of the chart.
+  final double? width;
+
+  /// The maximum width of the chart.
+  final double maxWidth;
+
+  /// Custom colors for the bars.
+  final List<Color> customColors;
+
+  /// The background color of the chart.
+  final Color? backGroundColor;
+
+  /// Whether to show labels on the bars.
   final bool showTitle;
 
-  /// Whether to display labels on each bar of the chart.
-  /// Defaults to true.
+  /// Whether to show labels on the bars.
   final bool showLabels;
 
-  /// Whether to display a legend below the chart.
-  /// The legend shows each item's label, value, and percentage.
-  /// Defaults to true.
+  /// Whether to show the legend.
   final bool showLegend;
 
-  /// Whether to display connecting lines from center to labels.
-  /// Defaults to true.
+  /// Whether to show grid lines.
   final bool showLines;
 
-  /// Callback function triggered when a sector is tapped.
-  /// Called with the [DataItem] corresponding to the tapped sector.
-  /// Defaults to a no-op function.
+  /// Callback function when a bar is tapped.
   final Function(DataItem) onBarTap;
-
-  /// Optional sorting order for the dataset.
-  /// Can be [DatasetOrdering.crescent], [DatasetOrdering.decrescent], or null.
-  /// When null, items display in their original order.
-  final DatasetOrdering? datasetOrdering;
 
   @override
   Widget build(BuildContext context) {
     final Size screenSize = MediaQuery.of(context).size;
+
+    double chartHeight = !showLegend
+        ? screenSize.width > maxWidth
+              ? maxWidth
+              : screenSize.width + 20
+        : screenSize.width > maxWidth
+        ? maxWidth + (dataset.length * 18) + 60
+        : screenSize.width + (dataset.length * 18) + 60;
+
+    if (height != null) {
+      chartHeight = height!;
+    }
+
+    double chartWidth = screenSize.width > maxWidth
+        ? maxWidth
+        : screenSize.width;
+
+    if (width != null) {
+      chartWidth = width!;
+    }
+
     List<DataItem> datasetOrdered = dataset;
 
     // Sort dataset if ordering is specified
@@ -99,17 +120,14 @@ class BarChart extends StatelessWidget {
       padding: const EdgeInsets.all(2.0),
       child: Stack(
         children: [
-          SizedBox(
-            height: !showLegend
-                ? screenSize.width > 600
-                      ? 600
-                      : screenSize.width
-                : screenSize.width > 600
-                ? 600 + (datasetOrdered.length * 18) + 50
-                : screenSize.width + (datasetOrdered.length * 18) + 50,
-            width: screenSize.width > 600 ? 600 : screenSize.width,
-            child: Card(
-              elevation: 15,
+          Container(
+            color:
+                backGroundColor ??
+                Theme.of(context).colorScheme.surfaceContainerLow,
+            child: SizedBox(
+              height: chartHeight,
+              width: chartWidth,
+
               child: CanvasTouchDetector(
                 gesturesToOverride: [GestureType.onTapDown],
                 builder: (context) => CustomPaint(
@@ -117,6 +135,8 @@ class BarChart extends StatelessWidget {
                     datasetOrdered,
                     context,
                     title: title,
+                    customColors: customColors,
+                    backGroundColor: backGroundColor,
                     showTitle: showTitle,
                     showLabels: showLabels,
                     showLegend: showLegend,
@@ -135,45 +155,51 @@ class BarChart extends StatelessWidget {
   }
 }
 
-/// Custom painter for rendering the bar chart on a canvas.
+/// A custom painter for rendering the bar chart.
 ///
-/// This painter handles all drawing operations including:
-/// - Bars with colors
-/// - Title text
-/// - Sector labels with background
-/// - Legend entries
-/// - Connecting lines
-/// - Touch detection for interactive elements
+/// This painter draws the bars, labels, title, legend, and grid lines based on the dataset.
 class BarChartPainter extends CustomPainter {
-  /// The data items to render.
+  /// The list of data items to paint.
   final List<DataItem> dataset;
 
-  /// The build context used for theme and text styling.
+  /// The build context for theming.
   final BuildContext context;
 
-  /// The chart title.
+  /// The title of the chart.
   final String title;
+
+  /// Custom colors for the bars.
+  final List<Color> customColors;
+
+  /// The background color.
+  final Color? backGroundColor;
 
   /// Whether to show the title.
   final bool showTitle;
 
-  /// Whether to show sector labels.
+  /// Whether to show labels.
   final bool showLabels;
 
   /// Whether to show the legend.
   final bool showLegend;
 
-  /// Whether to show connecting lines.
+  /// Whether to show grid lines.
   final bool showLines;
 
-  /// Callback for sector tap events.
+  /// Callback for tap events.
   final Function onTap;
 
-  /// Creates a [BarChartPainter].
+  /// Creates a BarChartPainter.
+  ///
+  /// [dataset] is the data to display.
+  /// [context] is the build context.
+  /// Other parameters control appearance and behavior.
   BarChartPainter(
     this.dataset,
     this.context, {
     this.title = '',
+    required this.customColors,
+    this.backGroundColor,
     this.showTitle = true,
     this.showLabels = true,
     this.showLegend = true,
@@ -195,15 +221,12 @@ class BarChartPainter extends CustomPainter {
         : size.height - 30;
     final Paint paint = Paint()..style = PaintingStyle.fill;
 
-    /// Draw title
     if (showTitle) {
       drawTitle(canvas, size);
     }
 
-    /// Draw scale X lines
     drawLines(canvas, size, maxHeight);
 
-    /// Draw each bar os chart
     drawBars(
       touchyCanvas,
       paint,
@@ -214,18 +237,20 @@ class BarChartPainter extends CustomPainter {
       greaterDataset,
     );
 
-    ///Draw labels
     if (showLabels) {
       drawLabel(canvas, size, barWidth, maxHeight, dataset, greaterDataset);
     }
 
-    ///Draw legend
     if (showLegend) {
       drawLegend(canvas, size, dataset);
     }
   }
 
-  ///Draw lines in X scale
+  /// Draws the grid lines on the chart.
+  ///
+  /// [canvas] is the canvas to draw on.
+  /// [size] is the size of the canvas.
+  /// [maxHeight] is the maximum height for the chart area.
   void drawLines(Canvas canvas, Size size, double maxHeight) {
     int subDivisions = ((maxHeight - 150) / 50).toInt();
 
@@ -253,16 +278,15 @@ class BarChartPainter extends CustomPainter {
     }
   }
 
-  /// Draws a single bar of the chart.
+  /// Draws the bars on the chart.
   ///
-  /// Parameters:
-  /// - [touchyCanvas] : Canvas with touch detection capabilities
-  /// - [paint] : The paint to draw item for this bar
-  /// - [size] : The size to draw the chart
-  /// - [barWidth] : The width of each bar
-  /// - [maxHeight] : The max height to calculate the X scale
-  /// - [dataset] : The data itens for this chart
-  /// - [greaterDataset] : The grater dataset to calculate the X scale
+  /// [touchyCanvas] is the touchable canvas.
+  /// [paint] is the paint for the bars.
+  /// [size] is the canvas size.
+  /// [barWidth] is the width of each bar.
+  /// [maxHeight] is the maximum height.
+  /// [dataset] is the data.
+  /// [greaterDataset] is the item with the greatest value.
   void drawBars(
     TouchyCanvas touchyCanvas,
     Paint paint,
@@ -276,7 +300,7 @@ class BarChartPainter extends CustomPainter {
       double heightFactor = greaterDataset.value / (maxHeight - 150);
       double barHeight = maxHeight - dataset[i].value / heightFactor;
       double x = (i * barWidth * 1.1) + 20;
-      paint.color = ColorSeed.values[i].color;
+      paint.color = dataset[i].color ?? customColors[i];
       touchyCanvas.drawRect(
         Rect.fromPoints(Offset(x, barHeight), Offset(x + barWidth, maxHeight)),
         paint,
@@ -285,15 +309,14 @@ class BarChartPainter extends CustomPainter {
     }
   }
 
-  /// Draws a label for a bar with a rounded background box.
+  /// Draws labels on the bars.
   ///
-  /// Parameters:
-  /// - [canvas] : The canvas to draw on
-  /// - [size] : The size to draw the label
-  /// - [barWidth] : The width of each bar to calculate label position
-  /// - [maxHeight] : The max height to calculate lbel position
-  /// - [dataset] : The data itens for this chart
-  /// - [greaterDataset] : The grater dataset to calculate label position
+  /// [canvas] is the canvas.
+  /// [size] is the canvas size.
+  /// [barWidth] is the bar width.
+  /// [maxHeight] is the max height.
+  /// [dataset] is the data.
+  /// [greaterDataset] is the max value item.
   void drawLabel(
     Canvas canvas,
     Size size,
@@ -309,7 +332,10 @@ class BarChartPainter extends CustomPainter {
 
       TextSpan label = TextSpan(
         text: dataset[i].label,
-        style: TextStyle(fontSize: 14, color: ColorSeed.values[i].color),
+        style: TextStyle(
+          fontSize: 14,
+          color: dataset[i].color ?? customColors[i],
+        ),
       );
       final labelPainter = TextPainter(
         text: label,
@@ -327,11 +353,10 @@ class BarChartPainter extends CustomPainter {
     }
   }
 
-  /// Draws the chart title at the top.
+  /// Draws the title of the chart.
   ///
-  /// Parameters:
-  /// - [canvas] : The canvas to draw on
-  /// - [size] : The size of the canvas
+  /// [canvas] is the canvas.
+  /// [size] is the canvas size.
   void drawTitle(Canvas canvas, Size size) {
     TextSpan textSpan = TextSpan(
       text: title,
@@ -349,12 +374,11 @@ class BarChartPainter extends CustomPainter {
     textPainter.paint(canvas, const Offset(10, 10));
   }
 
-  /// Draws a legend entry showing the item name, value, and percentage.
+  /// Draws the legend for the chart.
   ///
-  /// Parameters:
-  /// - [canvas] : The canvas to draw on
-  /// - [size] : The size of the canvas
-  /// - [dataset] : The data itens for this legend
+  /// [canvas] is the canvas.
+  /// [size] is the canvas size.
+  /// [dataset] is the data.
   void drawLegend(Canvas canvas, Size size, List<DataItem> dataset) {
     Offset legendPosition = Offset(30, (size.height - dataset.length * 18));
 
@@ -368,7 +392,7 @@ class BarChartPainter extends CustomPainter {
       final legendPaint = Paint()
         ..strokeWidth = 1.0
         ..style = PaintingStyle.fill
-        ..color = ColorSeed.values[i].color;
+        ..color = dataset[i].color ?? customColors[i];
 
       TextSpan textSpanPercent = TextSpan(
         text: '${((dataset[i].value / total) * 100).toStringAsFixed(2)} %',
