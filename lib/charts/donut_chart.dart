@@ -41,9 +41,6 @@ class DonutChart extends StatelessWidget {
 
   final List<Color> customColors;
 
-  /// The background color of the chart.
-  ///
-  /// If not specified, it defaults to `Theme.of(context).colorScheme.surfaceContainerLow`.
   final Color? backGroundColor;
 
   final bool showTitle;
@@ -84,7 +81,6 @@ class DonutChart extends StatelessWidget {
 
     List<DataItem> datasetOrdered = dataset;
 
-    // Sort dataset if ordering is specified
     if (datasetOrdering == DatasetOrdering.crescent) {
       datasetOrdered = [...dataset]..sort((a, b) => a.value.compareTo(b.value));
     } else if (datasetOrdering == DatasetOrdering.decrescent) {
@@ -123,7 +119,6 @@ class DonutChart extends StatelessWidget {
               ),
             ),
           ),
-          // ),
         ],
       ),
     );
@@ -139,9 +134,6 @@ class DonutChartPainter extends CustomPainter {
 
   final List<Color> customColors;
 
-  /// The background color of the chart.
-  ///
-  /// If not specified, it defaults to `Theme.of(context).colorScheme.surfaceContainerLow`.
   final Color? backGroundColor;
 
   final bool showTitle;
@@ -196,7 +188,6 @@ class DonutChartPainter extends CustomPainter {
       drawTitle(canvas, size);
     }
 
-    //draw sectors and lines
     for (DataItem di in dataset) {
       final sweepAngle = di.value / total * fullAngle * math.pi / 180.0;
 
@@ -220,7 +211,6 @@ class DonutChartPainter extends CustomPainter {
       startAngle += sweepAngle;
     }
 
-    // draw labels and legend
     for (final (int index, DataItem di) in dataset.indexed) {
       final sweepAngle = di.value / total * fullAngle * math.pi / 180.0;
 
@@ -250,7 +240,6 @@ class DonutChartPainter extends CustomPainter {
       startAngle += sweepAngle;
     }
 
-    // draw center text
     if (showCenterText) {
       drawTextCentered(
         canvas,
