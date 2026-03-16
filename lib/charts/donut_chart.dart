@@ -6,7 +6,23 @@ import 'dart:math' as math;
 
 import 'package:touchable/touchable.dart';
 
+/// A donut chart widget that visualises categorical data as arc sectors.
+///
+/// Supply a [dataset] of [DataItem] objects and the chart renders each item
+/// as a sector whose sweep angle is proportional to its value.
+///
+/// Example:
+/// ```dart
+/// DonutChart(
+///   title: 'Expenses',
+///   dataset: [
+///     DataItem(id: 0, label: 'Rent', value: 1200),
+///     DataItem(id: 1, label: 'Food', value: 450),
+///   ],
+/// )
+/// ```
 class DonutChart extends StatelessWidget {
+  /// Creates a [DonutChart].
   const DonutChart({
     super.key,
     required this.dataset,
@@ -27,32 +43,59 @@ class DonutChart extends StatelessWidget {
 
   static void _defaultOnTap(DataItem sectorValue) {}
 
+  /// The data items to display as donut sectors.
   final List<DataItem> dataset;
 
+  /// Optional ordering applied to [dataset] before rendering.
+  ///
+  /// When `null`, the original order is preserved.
   final DatasetOrdering? datasetOrdering;
 
+  /// Optional title displayed at the top of the chart.
   final String title;
 
+  /// Fixed height for the chart widget.
+  ///
+  /// When `null`, the height is calculated automatically based on the screen
+  /// width and whether the legend is shown.
   final double? height;
 
+  /// Fixed width for the chart widget.
+  ///
+  /// When `null`, the width follows the screen width up to [maxWidth].
   final double? width;
 
+  /// Maximum width the chart may occupy. Defaults to `600.0`.
   final double maxWidth;
 
+  /// Color palette used when a [DataItem] does not specify its own color.
   final List<Color> customColors;
 
+  /// Background color of the chart container.
+  ///
+  /// Defaults to `Theme.of(context).colorScheme.surfaceContainerLow` when
+  /// `null`.
   final Color? backGroundColor;
 
+  /// Whether to render the chart title. Defaults to `true`.
   final bool showTitle;
 
+  /// Whether to render total text in the chart center. Defaults to `true`.
   final bool showCenterText;
 
+  /// Whether to render labels near each sector. Defaults to `true`.
   final bool showLabels;
 
+  /// Whether to render the legend below the chart. Defaults to `true`.
   final bool showLegend;
 
+  /// Whether to render separator lines from center to sectors. Defaults to
+  /// `true`.
   final bool showLines;
 
+  /// Callback invoked when the user taps a sector.
+  ///
+  /// Receives the [DataItem] that corresponds to the tapped sector.
   final Function(DataItem) onSectorTap;
 
   @override
@@ -125,29 +168,42 @@ class DonutChart extends StatelessWidget {
   }
 }
 
+/// Paints the donut chart sectors, labels, legend, and optional center text.
 class DonutChartPainter extends CustomPainter {
+  /// Dataset used to render the chart.
   final List<DataItem> dataset;
 
+  /// Build context used for theming and tap detection.
   final BuildContext context;
 
+  /// Title displayed at the top of the chart.
   final String title;
 
+  /// Fallback color palette for sectors.
   final List<Color> customColors;
 
+  /// Optional background color for line separators.
   final Color? backGroundColor;
 
+  /// Whether to show the title.
   final bool showTitle;
 
+  /// Whether to show center text.
   final bool showCenterText;
 
+  /// Whether to show sector labels.
   final bool showLabels;
 
+  /// Whether to show the legend.
   final bool showLegend;
 
+  /// Whether to draw separator lines.
   final bool showLines;
 
+  /// Tap callback triggered when a sector is tapped.
   final Function onTap;
 
+  /// Creates a [DonutChartPainter].
   DonutChartPainter(
     this.dataset,
     this.context, {
@@ -255,6 +311,7 @@ class DonutChartPainter extends CustomPainter {
     }
   }
 
+  /// Draws a sector arc and registers tap handling.
   void drawSector(
     TouchyCanvas touchyCanvas,
     DataItem di,
@@ -279,6 +336,7 @@ class DonutChartPainter extends CustomPainter {
     );
   }
 
+  /// Draws the chart title.
   void drawTitle(Canvas canvas, Size size) {
     TextSpan textSpan = TextSpan(
       text: title,
@@ -296,10 +354,12 @@ class DonutChartPainter extends CustomPainter {
     textPainter.paint(canvas, const Offset(10, 10));
   }
 
+  /// Draws a separator line between sectors.
   void drawLines(Canvas canvas, Offset c, Offset p, Paint linePaint) {
     canvas.drawLine(c, p, linePaint);
   }
 
+  /// Draws a label near the middle of a sector.
   void drawLabels(
     Canvas canvas,
     Offset c,
@@ -357,6 +417,7 @@ class DonutChartPainter extends CustomPainter {
     );
   }
 
+  /// Draws a legend row for a data item.
   void drawLegend(
     Canvas canvas,
     Size size,
@@ -408,6 +469,7 @@ class DonutChartPainter extends CustomPainter {
     textPainter.paint(canvas, legendPosition + const Offset(65, -10));
   }
 
+  /// Draws [text] centered at [position] and optionally paints a background.
   void drawTextCentered(
     Canvas canvas,
     Offset position,
@@ -422,6 +484,7 @@ class DonutChartPainter extends CustomPainter {
     tp.paint(canvas, pos);
   }
 
+  /// Measures a multi-line string into a [TextPainter].
   TextPainter measureText(
     String s,
     TextStyle style,
@@ -439,5 +502,6 @@ class DonutChartPainter extends CustomPainter {
   }
 
   @override
+  /// Returns whether this painter should repaint.
   bool shouldRepaint(CustomPainter oldDelegate) => true;
 }
