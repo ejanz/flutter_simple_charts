@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+/// Default color palette used by charts when no custom colors are provided.
+///
+/// Contains 20 Material Design colors that are cycled through automatically
+/// when rendering bars or donut sectors.
 const List<Color> colors = [
   Colors.redAccent,
 

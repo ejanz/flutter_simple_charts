@@ -7,7 +7,23 @@ import 'package:flutter_simple_charts/utils/types.dart';
 
 import 'package:touchable/touchable.dart';
 
+/// A bar chart widget that visualises categorical data as vertical bars.
+///
+/// Supply a [dataset] of [DataItem] objects and the chart will render each
+/// item as a bar whose height is proportional to its value.
+///
+/// Example:
+/// ```dart
+/// BarChart(
+///   title: 'Fruits',
+///   dataset: [
+///     DataItem(id: 0, label: 'Apples', value: 50),
+///     DataItem(id: 1, label: 'Oranges', value: 30),
+///   ],
+/// )
+/// ```
 class BarChart extends StatelessWidget {
+  /// Creates a [BarChart].
   const BarChart({
     super.key,
     required this.dataset,
@@ -27,30 +43,54 @@ class BarChart extends StatelessWidget {
 
   static void _defaultOnTap(DataItem barValue) {}
 
+  /// The data items to display as bars.
   final List<DataItem> dataset;
 
+  /// Optional ordering applied to [dataset] before rendering.
+  ///
+  /// When `null`, the original order is preserved.
   final DatasetOrdering? datasetOrdering;
 
+  /// Optional title displayed at the top of the chart.
   final String title;
 
+  /// Fixed height for the chart widget.
+  ///
+  /// When `null`, the height is calculated automatically based on the screen
+  /// width and whether the legend is shown.
   final double? height;
 
+  /// Fixed width for the chart widget.
+  ///
+  /// When `null`, the width follows the screen width up to [maxWidth].
   final double? width;
 
+  /// Maximum width the chart may occupy. Defaults to `600.0`.
   final double maxWidth;
 
+  /// Color palette used when a [DataItem] does not specify its own color.
   final List<Color> customColors;
 
+  /// Background color of the chart container.
+  ///
+  /// Defaults to `Theme.of(context).colorScheme.surfaceContainerLow` when `null`.
   final Color? backGroundColor;
 
+  /// Whether to render the chart title. Defaults to `true`.
   final bool showTitle;
 
+  /// Whether to render bar labels below each bar. Defaults to `true`.
   final bool showLabels;
 
+  /// Whether to render the legend below the chart. Defaults to `false`.
   final bool showLegend;
 
+  /// Whether to render the horizontal grid lines. Defaults to `true`.
   final bool showLines;
 
+  /// Callback invoked when the user taps a bar.
+  ///
+  /// Receives the [DataItem] that corresponds to the tapped bar.
   final Function(DataItem) onBarTap;
 
   @override
