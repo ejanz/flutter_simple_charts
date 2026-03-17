@@ -18,9 +18,9 @@ A very simple donut and bar chart package, lightweight and easy to use
 
 The flutter_simple_charts offers two types of charts: donut and bar charts.
 
-- **Donut chart** - Very simple donut chart, lightweight and easy to use;
+- **Donut chart** - Very simple donut widget, that visualises categorical data as arc sectors;
 
-- **Bar chart** - Very simple bar chart, lightweight and easy to use;
+- **Bar chart** - Very simple bar chart widget, that visualises categorical data as vertical bars.;
 
 ### Screenshots
 
@@ -50,11 +50,29 @@ dependencies:
 import 'package:flutter/material.dart';
 import 'package:flutter_simple_charts/flutter_simple_charts.dart';
 
+/// Entry point for the example application.
 void main() {
   runApp(const MyApp());
 }
 
-List<DataItem> itens = [
+/// A custom palette to demonstrate overriding the default chart colors.
+final List<Color> customColors = [
+  Colors.orange.shade50,
+  Colors.orange.shade100,
+  Colors.orange.shade200,
+  Colors.orange.shade300,
+  Colors.orange.shade400,
+  Colors.orange,
+  Colors.orange.shade600,
+  Colors.orange.shade700,
+  Colors.orange.shade800,
+  Colors.orange.shade900,
+];
+
+/// Sample dataset used by both charts.
+///
+/// Each [DataItem] represents a category label and a numeric value.
+final List<DataItem> itens = [
   DataItem(id: 0, label: 'Oranges', value: 210),
   DataItem(id: 1, label: 'Apples', value: 195),
   DataItem(id: 2, label: 'Bananas', value: 65),
@@ -64,6 +82,7 @@ List<DataItem> itens = [
   DataItem(id: 6, label: 'Pineapples', value: 119),
 ];
 
+/// Root widget for the example app.
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -71,12 +90,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Charts Demo',
-      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.indigo)),
-      home: MainPage(),
+      // Basic theme so the charts look decent out of the box.
+      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo)),
+      home: const MainPage(),
     );
   }
 }
 
+/// Demonstrates both [DonutChart] and [BarChart] configurations.
 class MainPage extends StatelessWidget {
   const MainPage({super.key});
 
@@ -85,14 +106,47 @@ class MainPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text('Flutter Single Charts'),
+        title: const Text('Flutter Simple Charts'),
       ),
       body: Center(
         child: SingleChildScrollView(
           child: Column(
             children: [
+              // Donut chart using default palette, legend enabled.
               DonutChart(
                 title: 'Fruits Donut chart',
+                dataset: itens,
+                showLabels: false,
+                showLegend: true,
+                datasetOrdering: DatasetOrdering.decrescent,
+                // Tapping a sector shows a small dialog with the selected item.
+                onSectorTap: (sectorValue) => _showDialog(
+                  'Item: ${sectorValue.label} - Quantity: ${sectorValue.value}',
+                  context,
+                ),
+              ),
+
+              // Bar chart using default palette, labels + legend enabled.
+              BarChart(
+                title: 'Fruits Bar chart',
+                dataset: itens,
+                showLabels: true,
+                showLegend: true,
+                datasetOrdering: DatasetOrdering.decrescent,
+                // Tapping a bar shows the selected item.
+                onBarTap: (barValue) => _showDialog(
+                  'Item: ${barValue.label} - Quantity: ${barValue.value}',
+                  context,
+                ),
+              ),
+
+              // Donut chart demonstrating custom palette, background, and sizing.
+              DonutChart(
+                title: 'Fruits Donut chart',
+                customColors: customColors.reversed.toList(),
+                backGroundColor: Colors.amber.shade100,
+                width: 300,
+                height: 500,
                 dataset: itens,
                 showLabels: false,
                 showLegend: true,
@@ -102,8 +156,14 @@ class MainPage extends StatelessWidget {
                   context,
                 ),
               ),
+
+              // Bar chart demonstrating the same customisations.
               BarChart(
                 title: 'Fruits Bar chart',
+                customColors: customColors.reversed.toList(),
+                backGroundColor: Colors.amber.shade100,
+                width: 350,
+                height: 500,
                 dataset: itens,
                 showLabels: true,
                 showLegend: true,
@@ -117,10 +177,13 @@ class MainPage extends StatelessWidget {
           ),
         ),
       ),
+      // Adds a bit of bottom padding so the legend doesn't feel cramped.
+      bottomNavigationBar: const SizedBox(height: 80),
     );
   }
 }
 
+/// Shows a simple dialog with [message].
 void _showDialog(String message, BuildContext context) {
   showDialog<void>(
     context: context,
