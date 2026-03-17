@@ -42,7 +42,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Charts Demo',
       // Basic theme so the charts look decent out of the box.
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo)),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+      ),
       home: const MainPage(),
     );
   }
@@ -66,6 +68,9 @@ class MainPage extends StatelessWidget {
               // Donut chart using default palette, legend enabled.
               DonutChart(
                 title: 'Fruits Donut chart',
+                animate: true,
+                animationDuration: const Duration(milliseconds: 1500),
+                animationCurve: Curves.easeInOut,
                 dataset: itens,
                 showLabels: false,
                 showLegend: true,
@@ -80,6 +85,9 @@ class MainPage extends StatelessWidget {
               // Bar chart using default palette, labels + legend enabled.
               BarChart(
                 title: 'Fruits Bar chart',
+                animate: true,
+                animationDuration: const Duration(milliseconds: 1500),
+                animationCurve: Curves.easeInOut,
                 dataset: itens,
                 showLabels: true,
                 showLegend: true,

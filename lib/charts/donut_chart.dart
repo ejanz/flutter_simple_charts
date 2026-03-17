@@ -21,7 +21,7 @@ import 'package:touchable/touchable.dart';
 ///   ],
 /// )
 /// ```
-class DonutChart extends StatelessWidget {
+class DonutChart extends StatefulWidget {
   /// Creates a [DonutChart].
   const DonutChart({
     super.key,
@@ -38,6 +38,9 @@ class DonutChart extends StatelessWidget {
     this.showLabels = true,
     this.showLegend = true,
     this.showLines = true,
+    this.animate = true,
+    this.animationDuration = const Duration(milliseconds: 900),
+    this.animationCurve = Curves.easeOutCubic,
     this.onSectorTap = _defaultOnTap,
   });
 
@@ -93,41 +96,114 @@ class DonutChart extends StatelessWidget {
   /// `true`.
   final bool showLines;
 
+  /// Whether to animate the chart when it is first shown or rebuilt.
+  ///
+  /// Defaults to `true`.
+  final bool animate;
+
+  /// Duration of the entry animation.
+  final Duration animationDuration;
+
+  /// Curve used by the entry animation.
+  final Curve animationCurve;
+
   /// Callback invoked when the user taps a sector.
   ///
   /// Receives the [DataItem] that corresponds to the tapped sector.
   final Function(DataItem) onSectorTap;
 
   @override
+  State<DonutChart> createState() => _DonutChartState();
+}
+
+class _DonutChartState extends State<DonutChart>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this);
+    _configureAnimation(restart: true);
+  }
+
+  void _configureAnimation({required bool restart}) {
+    _controller.duration = widget.animationDuration;
+    _animation = CurvedAnimation(parent: _controller, curve: widget.animationCurve);
+
+    if (!widget.animate) {
+      _controller.value = 1.0;
+      return;
+    }
+
+    if (restart) {
+      _controller
+        ..value = 0.0
+        ..forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant DonutChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final shouldRestart =
+        widget.animate &&
+        (oldWidget.animate != widget.animate ||
+            oldWidget.animationDuration != widget.animationDuration ||
+            oldWidget.animationCurve != widget.animationCurve ||
+            oldWidget.datasetOrdering != widget.datasetOrdering ||
+            !identical(oldWidget.dataset, widget.dataset) ||
+            oldWidget.dataset.length != widget.dataset.length);
+
+    if (!widget.animate) {
+      _controller.value = 1.0;
+      return;
+    }
+
+    if (shouldRestart) {
+      _configureAnimation(restart: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final Size screenSize = MediaQuery.of(context).size;
 
-    double chartHeight = !showLegend
-        ? screenSize.width > maxWidth
-              ? maxWidth
+    double chartHeight = !widget.showLegend
+        ? screenSize.width > widget.maxWidth
+              ? widget.maxWidth
               : screenSize.width + 20
-        : screenSize.width > maxWidth
-        ? maxWidth + (dataset.length * 18) + 60
-        : screenSize.width + (dataset.length * 18) + 60;
+        : screenSize.width > widget.maxWidth
+        ? widget.maxWidth + (widget.dataset.length * 18) + 60
+        : screenSize.width + (widget.dataset.length * 18) + 60;
 
-    if (height != null) {
-      chartHeight = height!;
+    if (widget.height != null) {
+      chartHeight = widget.height!;
     }
 
-    double chartWidth = screenSize.width > maxWidth
-        ? maxWidth
+    double chartWidth = screenSize.width > widget.maxWidth
+        ? widget.maxWidth
         : screenSize.width;
 
-    if (width != null) {
-      chartWidth = width!;
+    if (widget.width != null) {
+      chartWidth = widget.width!;
     }
 
-    List<DataItem> datasetOrdered = dataset;
+    List<DataItem> datasetOrdered = widget.dataset;
 
-    if (datasetOrdering == DatasetOrdering.crescent) {
-      datasetOrdered = [...dataset]..sort((a, b) => a.value.compareTo(b.value));
-    } else if (datasetOrdering == DatasetOrdering.decrescent) {
-      datasetOrdered = [...dataset]..sort((a, b) => b.value.compareTo(a.value));
+    if (widget.datasetOrdering == DatasetOrdering.crescent) {
+      datasetOrdered = [...widget.dataset]
+        ..sort((a, b) => a.value.compareTo(b.value));
+    } else if (widget.datasetOrdering == DatasetOrdering.decrescent) {
+      datasetOrdered = [...widget.dataset]
+        ..sort((a, b) => b.value.compareTo(a.value));
     }
 
     return Padding(
@@ -136,7 +212,7 @@ class DonutChart extends StatelessWidget {
         children: [
           Container(
             color:
-                backGroundColor ??
+                widget.backGroundColor ??
                 Theme.of(context).colorScheme.surfaceContainerLow,
             child: SizedBox(
               height: chartHeight,
@@ -147,16 +223,16 @@ class DonutChart extends StatelessWidget {
                   painter: DonutChartPainter(
                     datasetOrdered,
                     context,
-                    title: title,
-                    customColors: customColors,
-                    backGroundColor: backGroundColor,
-                    showTitle: showTitle,
-                    showCenterText: showCenterText,
-                    showLabels: showLabels,
-                    showLegend: showLegend,
-                    showLines: showLines,
-
-                    onTap: (DataItem value) => onSectorTap(value),
+                    animation: _animation,
+                    title: widget.title,
+                    customColors: widget.customColors,
+                    backGroundColor: widget.backGroundColor,
+                    showTitle: widget.showTitle,
+                    showCenterText: widget.showCenterText,
+                    showLabels: widget.showLabels,
+                    showLegend: widget.showLegend,
+                    showLines: widget.showLines,
+                    onTap: (DataItem value) => widget.onSectorTap(value),
                   ),
                 ),
               ),
@@ -203,10 +279,14 @@ class DonutChartPainter extends CustomPainter {
   /// Tap callback triggered when a sector is tapped.
   final Function onTap;
 
+  /// Animation driving the entry of the sectors.
+  final Animation<double> animation;
+
   /// Creates a [DonutChartPainter].
   DonutChartPainter(
     this.dataset,
     this.context, {
+    required this.animation,
     this.title = '',
     required this.customColors,
     this.backGroundColor,
@@ -216,17 +296,29 @@ class DonutChartPainter extends CustomPainter {
     this.showLegend = true,
     this.showLines = true,
     required this.onTap,
-  });
+  }) : super(repaint: animation);
 
   @override
   void paint(Canvas canvas, Size size) {
     TouchyCanvas touchyCanvas = TouchyCanvas(context, canvas);
 
+    final palette = customColors.isEmpty ? colors : customColors;
+
+    if (dataset.isEmpty) {
+      if (showTitle) {
+        drawTitle(canvas, size);
+      }
+      return;
+    }
+
+    final t = animation.value.clamp(0.0, 1.0);
+
     final diameter = size.width * 0.85;
     final c = Offset(size.width / 2.0, diameter / 2.0 + 60.0);
     final rect = Rect.fromCenter(center: c, width: diameter, height: diameter);
     const fullAngle = 360.0;
-    double startAngle = 0.0;
+    double startAngleAnimated = 0.0;
+    double startAngleFull = 0.0;
 
     final linePaint = Paint()
       ..strokeWidth = 3.0
@@ -240,45 +332,57 @@ class DonutChartPainter extends CustomPainter {
       total += di.value;
     }
 
+    if (total <= 0.0) {
+      if (showTitle) {
+        drawTitle(canvas, size);
+      }
+      return;
+    }
+
     if (showTitle) {
       drawTitle(canvas, size);
     }
 
-    for (DataItem di in dataset) {
-      final sweepAngle = di.value / total * fullAngle * math.pi / 180.0;
+    for (final (int index, DataItem di) in dataset.indexed) {
+      final sweepAngleFull = di.value / total * fullAngle * math.pi / 180.0;
+      final sweepAngleAnimated = sweepAngleFull * t;
 
-      final dx = diameter * 0.55 * math.cos(startAngle);
-      final dy = diameter * 0.55 * math.sin(startAngle);
+      final dx = diameter * 0.55 * math.cos(startAngleAnimated);
+      final dy = diameter * 0.55 * math.sin(startAngleAnimated);
       final p = c + Offset(dx, dy);
 
       drawSector(
         touchyCanvas,
         di,
-        di.color ?? customColors[dataset.indexOf(di)],
+        di.color ?? palette[index % palette.length],
         rect,
-        startAngle,
-        sweepAngle,
+        startAngleAnimated,
+        sweepAngleAnimated,
       );
 
       if (showLines) {
         drawLines(canvas, c, p, linePaint);
       }
 
-      startAngle += sweepAngle;
+      startAngleAnimated += sweepAngleAnimated;
     }
 
+    // Fade in labels/legend once sectors are mostly drawn.
+    final metaAlpha = (((t - 0.75) / 0.25).clamp(0.0, 1.0) * 255).round();
+
     for (final (int index, DataItem di) in dataset.indexed) {
-      final sweepAngle = di.value / total * fullAngle * math.pi / 180.0;
+      final sweepAngleFull = di.value / total * fullAngle * math.pi / 180.0;
 
       if (showLabels) {
         drawLabels(
           canvas,
           c,
           diameter,
-          startAngle,
-          sweepAngle,
+          startAngleFull,
+          sweepAngleFull,
           di.label,
           index,
+          metaAlpha,
         );
       }
 
@@ -289,11 +393,14 @@ class DonutChartPainter extends CustomPainter {
           legendPosition,
           di,
           total,
-          di.color ?? customColors[dataset.indexOf(di)],
+          (di.color ?? palette[index % palette.length])
+              .withAlpha(metaAlpha),
+          metaAlpha,
         );
         legendPosition += const Offset(0, 18);
       }
-      startAngle += sweepAngle;
+
+      startAngleFull += sweepAngleFull;
     }
 
     if (showCenterText) {
@@ -302,7 +409,10 @@ class DonutChartPainter extends CustomPainter {
         c,
         'Total\n${total.toStringAsFixed(2)}',
         Theme.of(context).textTheme.bodyMedium!.copyWith(
-          color: Theme.of(context).colorScheme.onPrimaryContainer,
+          color: Theme.of(context)
+              .colorScheme
+              .onPrimaryContainer
+              .withAlpha(metaAlpha),
           fontSize: 28.0,
         ),
         diameter * 0.6,
@@ -368,7 +478,9 @@ class DonutChartPainter extends CustomPainter {
     double sweepAngle,
     String label,
     int index,
+    int alpha,
   ) {
+    if (alpha <= 0) return;
     final r = diameter * 0.5;
     final dx = r * math.cos(startAngle + sweepAngle / 2.0);
     final dy = r * math.sin(startAngle + sweepAngle / 2.0);
@@ -376,12 +488,18 @@ class DonutChartPainter extends CustomPainter {
 
     final borderLabelPaint = Paint()
       ..strokeWidth = 1.0
-      ..color = Theme.of(context).colorScheme.onSecondaryContainer.withAlpha(50)
+      ..color = Theme.of(context)
+          .colorScheme
+          .onSecondaryContainer
+          .withAlpha((50 * (alpha / 255.0)).round())
       ..style = PaintingStyle.fill;
 
     final labelPaint = Paint()
       ..strokeWidth = 1.0
-      ..color = Theme.of(context).colorScheme.secondaryContainer.withAlpha(70)
+      ..color = Theme.of(context)
+          .colorScheme
+          .secondaryContainer
+          .withAlpha((70 * (alpha / 255.0)).round())
       ..style = PaintingStyle.fill;
 
     drawTextCentered(
@@ -389,7 +507,7 @@ class DonutChartPainter extends CustomPainter {
       position,
       label,
       Theme.of(context).textTheme.bodyMedium!.copyWith(
-        color: Theme.of(context).colorScheme.onPrimaryContainer,
+        color: Theme.of(context).colorScheme.onPrimaryContainer.withAlpha(alpha),
         fontSize: 10.0,
         fontWeight: FontWeight.w900,
         textBaseline: TextBaseline.ideographic,
@@ -425,7 +543,9 @@ class DonutChartPainter extends CustomPainter {
     DataItem di,
     double total,
     Color sectorColor,
+    int alpha,
   ) {
+    if (alpha <= 0) return;
     final legendPaint = Paint()
       ..strokeWidth = 1.0
       ..style = PaintingStyle.fill
@@ -434,7 +554,7 @@ class DonutChartPainter extends CustomPainter {
     TextSpan textSpanPercent = TextSpan(
       text: '${((di.value / total) * 100).toStringAsFixed(2)} %',
       style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-        color: Theme.of(context).colorScheme.onPrimaryContainer,
+        color: Theme.of(context).colorScheme.onPrimaryContainer.withAlpha(alpha),
         fontSize: 14.0,
       ),
     );
@@ -442,7 +562,7 @@ class DonutChartPainter extends CustomPainter {
     TextSpan textSpan = TextSpan(
       text: '${di.label} - ${di.value.toStringAsFixed(2)}',
       style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-        color: Theme.of(context).colorScheme.onPrimaryContainer,
+        color: Theme.of(context).colorScheme.onPrimaryContainer.withAlpha(alpha),
         fontSize: 14.0,
       ),
     );

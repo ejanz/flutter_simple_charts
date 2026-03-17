@@ -207,3 +207,31 @@ void _showDialog(String message, BuildContext context) {
   );
 }
 ```
+
+## Animation
+
+Both `DonutChart` and `BarChart` animate by default.
+
+You can control (or disable) the entry animation with:
+
+- `animate` (bool, default: `true`)
+- `animationDuration` (default: `Duration(milliseconds: 900)`)
+- `animationCurve` (default: `Curves.easeOutCubic`)
+
+Example:
+
+```dart
+DonutChart(
+  title: 'Expenses',
+  dataset: itens,
+  animationDuration: const Duration(milliseconds: 1200),
+  animationCurve: Curves.easeOutQuart,
+);
+
+BarChart(
+  title: 'Expenses',
+  dataset: itens,
+  animate: false, // render instantly
+);
+```
+

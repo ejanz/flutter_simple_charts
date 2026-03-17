@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_simple_charts/utils/enums.dart';
@@ -22,7 +23,7 @@ import 'package:touchable/touchable.dart';
 ///   ],
 /// )
 /// ```
-class BarChart extends StatelessWidget {
+class BarChart extends StatefulWidget {
   /// Creates a [BarChart].
   const BarChart({
     super.key,
@@ -37,6 +38,9 @@ class BarChart extends StatelessWidget {
     this.showLabels = true,
     this.showLegend = false,
     this.showLines = true,
+    this.animate = true,
+    this.animationDuration = const Duration(milliseconds: 900),
+    this.animationCurve = Curves.easeOutCubic,
     this.onBarTap = _defaultOnTap,
     this.datasetOrdering,
   });
@@ -89,41 +93,114 @@ class BarChart extends StatelessWidget {
   /// Whether to render the horizontal grid lines. Defaults to `true`.
   final bool showLines;
 
+  /// Whether to animate the chart when it is first shown or rebuilt.
+  ///
+  /// Defaults to `true`.
+  final bool animate;
+
+  /// Duration of the entry animation.
+  final Duration animationDuration;
+
+  /// Curve used by the entry animation.
+  final Curve animationCurve;
+
   /// Callback invoked when the user taps a bar.
   ///
   /// Receives the [DataItem] that corresponds to the tapped bar.
   final Function(DataItem) onBarTap;
 
   @override
+  State<BarChart> createState() => _BarChartState();
+}
+
+class _BarChartState extends State<BarChart>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this);
+    _configureAnimation(restart: true);
+  }
+
+  void _configureAnimation({required bool restart}) {
+    _controller.duration = widget.animationDuration;
+    _animation = CurvedAnimation(parent: _controller, curve: widget.animationCurve);
+
+    if (!widget.animate) {
+      _controller.value = 1.0;
+      return;
+    }
+
+    if (restart) {
+      _controller
+        ..value = 0.0
+        ..forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant BarChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final shouldRestart =
+        widget.animate &&
+        (oldWidget.animate != widget.animate ||
+            oldWidget.animationDuration != widget.animationDuration ||
+            oldWidget.animationCurve != widget.animationCurve ||
+            oldWidget.datasetOrdering != widget.datasetOrdering ||
+            !identical(oldWidget.dataset, widget.dataset) ||
+            oldWidget.dataset.length != widget.dataset.length);
+
+    if (!widget.animate) {
+      _controller.value = 1.0;
+      return;
+    }
+
+    if (shouldRestart) {
+      _configureAnimation(restart: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final Size screenSize = MediaQuery.of(context).size;
 
-    double chartHeight = !showLegend
-        ? screenSize.width > maxWidth
-              ? maxWidth
+    double chartHeight = !widget.showLegend
+        ? screenSize.width > widget.maxWidth
+              ? widget.maxWidth
               : screenSize.width + 20
-        : screenSize.width > maxWidth
-        ? maxWidth + (dataset.length * 18) + 60
-        : screenSize.width + (dataset.length * 18) + 60;
+        : screenSize.width > widget.maxWidth
+        ? widget.maxWidth + (widget.dataset.length * 18) + 60
+        : screenSize.width + (widget.dataset.length * 18) + 60;
 
-    if (height != null) {
-      chartHeight = height!;
+    if (widget.height != null) {
+      chartHeight = widget.height!;
     }
 
-    double chartWidth = screenSize.width > maxWidth
-        ? maxWidth
+    double chartWidth = screenSize.width > widget.maxWidth
+        ? widget.maxWidth
         : screenSize.width;
 
-    if (width != null) {
-      chartWidth = width!;
+    if (widget.width != null) {
+      chartWidth = widget.width!;
     }
 
-    List<DataItem> datasetOrdered = dataset;
+    List<DataItem> datasetOrdered = widget.dataset;
 
-    if (datasetOrdering == DatasetOrdering.crescent) {
-      datasetOrdered = [...dataset]..sort((a, b) => a.value.compareTo(b.value));
-    } else if (datasetOrdering == DatasetOrdering.decrescent) {
-      datasetOrdered = [...dataset]..sort((a, b) => b.value.compareTo(a.value));
+    if (widget.datasetOrdering == DatasetOrdering.crescent) {
+      datasetOrdered = [...widget.dataset]
+        ..sort((a, b) => a.value.compareTo(b.value));
+    } else if (widget.datasetOrdering == DatasetOrdering.decrescent) {
+      datasetOrdered = [...widget.dataset]
+        ..sort((a, b) => b.value.compareTo(a.value));
     }
 
     return Padding(
@@ -132,7 +209,7 @@ class BarChart extends StatelessWidget {
         children: [
           Container(
             color:
-                backGroundColor ??
+                widget.backGroundColor ??
                 Theme.of(context).colorScheme.surfaceContainerLow,
             child: SizedBox(
               height: chartHeight,
@@ -144,14 +221,15 @@ class BarChart extends StatelessWidget {
                   painter: BarChartPainter(
                     datasetOrdered,
                     context,
-                    title: title,
-                    customColors: customColors,
-                    backGroundColor: backGroundColor,
-                    showTitle: showTitle,
-                    showLabels: showLabels,
-                    showLegend: showLegend,
-                    showLines: showLines,
-                    onTap: (DataItem value) => onBarTap(value),
+                    animation: _animation,
+                    title: widget.title,
+                    customColors: widget.customColors,
+                    backGroundColor: widget.backGroundColor,
+                    showTitle: widget.showTitle,
+                    showLabels: widget.showLabels,
+                    showLegend: widget.showLegend,
+                    showLines: widget.showLines,
+                    onTap: (DataItem value) => widget.onBarTap(value),
                   ),
                   willChange: true,
                   isComplex: true,
@@ -197,10 +275,14 @@ class BarChartPainter extends CustomPainter {
   /// Tap callback triggered when a bar is tapped.
   final Function onTap;
 
+  /// Animation driving the entry of the bars.
+  final Animation<double> animation;
+
   /// Creates a [BarChartPainter].
   BarChartPainter(
     this.dataset,
     this.context, {
+    required this.animation,
     this.title = '',
     required this.customColors,
     this.backGroundColor,
@@ -209,11 +291,22 @@ class BarChartPainter extends CustomPainter {
     this.showLegend = true,
     this.showLines = true,
     required this.onTap,
-  });
+  }) : super(repaint: animation);
 
   @override
   void paint(Canvas canvas, Size size) {
     TouchyCanvas touchyCanvas = TouchyCanvas(context, canvas);
+
+    final palette = customColors.isEmpty ? colors : customColors;
+
+    if (dataset.isEmpty) {
+      if (showTitle) {
+        drawTitle(canvas, size);
+      }
+      return;
+    }
+
+    final t = animation.value.clamp(0.0, 1.0);
 
     final greaterDataset = dataset.reduce(
       (dMax, d) => d.value > dMax.value ? d : dMax,
@@ -239,14 +332,25 @@ class BarChartPainter extends CustomPainter {
       maxHeight,
       dataset,
       greaterDataset,
+      t,
+      palette,
     );
 
     if (showLabels) {
-      drawLabel(canvas, size, barWidth, maxHeight, dataset, greaterDataset);
+      drawLabel(
+        canvas,
+        size,
+        barWidth,
+        maxHeight,
+        dataset,
+        greaterDataset,
+        t,
+        palette,
+      );
     }
 
     if (showLegend) {
-      drawLegend(canvas, size, dataset);
+      drawLegend(canvas, size, dataset, t, palette);
     }
   }
 
@@ -287,14 +391,20 @@ class BarChartPainter extends CustomPainter {
     double maxHeight,
     List<DataItem> dataset,
     DataItem greaterDataset,
+    double t,
+    List<Color> palette,
   ) {
+    final usableHeight = math.max(1.0, maxHeight - 150);
+    final heightFactor =
+        greaterDataset.value == 0.0 ? 1.0 : (greaterDataset.value / usableHeight);
     for (int i = 0; i < dataset.length; i++) {
-      double heightFactor = greaterDataset.value / (maxHeight - 150);
-      double barHeight = maxHeight - dataset[i].value / heightFactor;
+      final fullTop =
+          greaterDataset.value == 0.0 ? maxHeight : (maxHeight - dataset[i].value / heightFactor);
+      final barTop = ui.lerpDouble(maxHeight, fullTop, t) ?? fullTop;
       double x = (i * barWidth * 1.1) + 20;
-      paint.color = dataset[i].color ?? customColors[i];
+      paint.color = dataset[i].color ?? palette[i % palette.length];
       touchyCanvas.drawRect(
-        Rect.fromPoints(Offset(x, barHeight), Offset(x + barWidth, maxHeight)),
+        Rect.fromPoints(Offset(x, barTop), Offset(x + barWidth, maxHeight)),
         paint,
         onTapDown: (detail) => onTap(dataset[i]),
       );
@@ -309,17 +419,27 @@ class BarChartPainter extends CustomPainter {
     double maxHeight,
     List<DataItem> dataset,
     DataItem greaterDataset,
+    double t,
+    List<Color> palette,
   ) {
+    final usableHeight = math.max(1.0, maxHeight - 150);
+    final heightFactor =
+        greaterDataset.value == 0.0 ? 1.0 : (greaterDataset.value / usableHeight);
+    final alpha = (((t - 0.65) / 0.35).clamp(0.0, 1.0) * 255).round();
     for (int i = 0; i < dataset.length; i++) {
-      double heightFactor = greaterDataset.value / (maxHeight - 150);
-      double barHeight = maxHeight - 10 - dataset[i].value / heightFactor;
+      final fullTop =
+          greaterDataset.value == 0.0
+              ? maxHeight
+              : (maxHeight - 10 - dataset[i].value / heightFactor);
+      final barTop = ui.lerpDouble(maxHeight, fullTop, t) ?? fullTop;
       double x = (i * barWidth * 1.1) + (barWidth / 2) + 15;
 
       TextSpan label = TextSpan(
         text: dataset[i].label,
         style: TextStyle(
           fontSize: 14,
-          color: dataset[i].color ?? customColors[i],
+          color: (dataset[i].color ?? palette[i % palette.length])
+              .withAlpha(alpha),
         ),
       );
       final labelPainter = TextPainter(
@@ -328,7 +448,7 @@ class BarChartPainter extends CustomPainter {
       );
 
       labelPainter.layout(minWidth: 0, maxWidth: size.width);
-      Offset center = Offset(x, barHeight);
+      Offset center = Offset(x, barTop);
       canvas.save();
       canvas.translate(center.dx, center.dy);
       canvas.rotate(-math.pi / 3);
@@ -357,7 +477,14 @@ class BarChartPainter extends CustomPainter {
   }
 
   /// Draws the legend below the chart.
-  void drawLegend(Canvas canvas, Size size, List<DataItem> dataset) {
+  void drawLegend(
+    Canvas canvas,
+    Size size,
+    List<DataItem> dataset,
+    double t,
+    List<Color> palette,
+  ) {
+    final alpha = (((t - 0.7) / 0.3).clamp(0.0, 1.0) * 255).round();
     Offset legendPosition = Offset(30, (size.height - dataset.length * 18));
 
     double total = 0.0;
@@ -370,12 +497,13 @@ class BarChartPainter extends CustomPainter {
       final legendPaint = Paint()
         ..strokeWidth = 1.0
         ..style = PaintingStyle.fill
-        ..color = dataset[i].color ?? customColors[i];
+        ..color =
+            (dataset[i].color ?? palette[i % palette.length]).withAlpha(alpha);
 
       TextSpan textSpanPercent = TextSpan(
         text: '${((dataset[i].value / total) * 100).toStringAsFixed(2)} %',
         style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-          color: Theme.of(context).colorScheme.onPrimaryContainer,
+          color: Theme.of(context).colorScheme.onPrimaryContainer.withAlpha(alpha),
           fontSize: 14.0,
         ),
       );
@@ -383,7 +511,7 @@ class BarChartPainter extends CustomPainter {
       TextSpan textSpan = TextSpan(
         text: '${dataset[i].label} - ${dataset[i].value.toStringAsFixed(2)}',
         style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-          color: Theme.of(context).colorScheme.onPrimaryContainer,
+          color: Theme.of(context).colorScheme.onPrimaryContainer.withAlpha(alpha),
           fontSize: 14.0,
         ),
       );
@@ -416,6 +544,8 @@ class BarChartPainter extends CustomPainter {
   @override
   /// Returns whether this painter should repaint.
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    // We repaint whenever the animation ticks (via super(repaint: animation)).
+    // Still return true to be safe when non-animation inputs change.
     return true;
   }
 }
