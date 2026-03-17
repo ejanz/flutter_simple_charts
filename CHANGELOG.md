@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [0.0.4] - 2026-03-17
+### Updated
+- Added optional animation to charts;
+
 ## [0.0.3] - 2026-03-15
 ### Updated
 - Added optional custom list of colors to data itens;
