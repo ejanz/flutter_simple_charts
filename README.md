@@ -235,3 +235,41 @@ BarChart(
 );
 ```
 
+## Hover (desktop/web)
+
+On desktop and web, charts can highlight elements when the mouse hovers over a
+bar/sector.
+
+- `enableHover` (bool, default: `true`)
+- `onBarHover` / `onSectorHover` (called with a `DataItem?`)
+
+Example:
+
+```dart
+BarChart(
+  title: 'Fruits',
+  dataset: itens,
+  onBarHover: (item) {
+    // item == null means the pointer left the bars
+    debugPrint('hover: ${item?.label}');
+  },
+);
+
+DonutChart(
+  title: 'Fruits',
+  dataset: itens,
+  onSectorHover: (item) => debugPrint('hover: ${item?.label}'),
+);
+```
+
+## Tap highlight (mobile)
+
+On mobile (Android/iOS), hover does not exist, so charts can highlight elements
+when the user taps them.
+
+- `enableTapHighlight` (bool, default: `true`)
+- `toggleTapHighlight` (bool, default: `true`)
+
+Tapping a different bar/sector moves the highlight; tapping the same one again
+can clear it (when `toggleTapHighlight: true`).
+

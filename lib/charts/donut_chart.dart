@@ -4,8 +4,6 @@ import 'package:flutter_simple_charts/utils/lists.dart';
 import 'package:flutter_simple_charts/utils/types.dart';
 import 'dart:math' as math;
 
-import 'package:touchable/touchable.dart';
-
 /// A donut chart widget that visualises categorical data as arc sectors.
 ///
 /// Supply a [dataset] of [DataItem] objects and the chart renders each item
@@ -41,10 +39,12 @@ class DonutChart extends StatefulWidget {
     this.animate = true,
     this.animationDuration = const Duration(milliseconds: 900),
     this.animationCurve = Curves.easeOutCubic,
-    this.onSectorTap = _defaultOnTap,
+    this.enableHover = true,
+    this.onSectorHover,
+    this.enableTapHighlight = true,
+    this.toggleTapHighlight = true,
+    this.onSectorTap,
   });
-
-  static void _defaultOnTap(DataItem sectorValue) {}
 
   /// The data items to display as donut sectors.
   final List<DataItem> dataset;
@@ -107,10 +107,32 @@ class DonutChart extends StatefulWidget {
   /// Curve used by the entry animation.
   final Curve animationCurve;
 
+  /// Whether hovering with a mouse pointer highlights sectors (desktop/web).
+  ///
+  /// Defaults to `true`.
+  final bool enableHover;
+
+  /// Callback invoked when the hovered sector changes (desktop/web).
+  ///
+  /// Called with the hovered [DataItem], or `null` when the pointer leaves the
+  /// chart or is not over any sector.
+  final ValueChanged<DataItem?>? onSectorHover;
+
+  /// Whether tapping a sector highlights it (useful on mobile where hover
+  /// doesn't exist).
+  ///
+  /// Defaults to `true`.
+  final bool enableTapHighlight;
+
+  /// Whether tapping the already-highlighted sector clears the highlight.
+  ///
+  /// Defaults to `true`.
+  final bool toggleTapHighlight;
+
   /// Callback invoked when the user taps a sector.
   ///
   /// Receives the [DataItem] that corresponds to the tapped sector.
-  final Function(DataItem) onSectorTap;
+  final ValueChanged<DataItem?>? onSectorTap;
 
   @override
   State<DonutChart> createState() => _DonutChartState();
@@ -121,6 +143,9 @@ class _DonutChartState extends State<DonutChart>
   late final AnimationController _controller;
   late Animation<double> _animation;
 
+  DataItem? _hovered;
+  DataItem? _tapped;
+
   @override
   void initState() {
     super.initState();
@@ -130,7 +155,10 @@ class _DonutChartState extends State<DonutChart>
 
   void _configureAnimation({required bool restart}) {
     _controller.duration = widget.animationDuration;
-    _animation = CurvedAnimation(parent: _controller, curve: widget.animationCurve);
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: widget.animationCurve,
+    );
 
     if (!widget.animate) {
       _controller.value = 1.0;
@@ -217,22 +245,48 @@ class _DonutChartState extends State<DonutChart>
             child: SizedBox(
               height: chartHeight,
               width: chartWidth,
-              child: CanvasTouchDetector(
-                gesturesToOverride: [GestureType.onTapDown],
-                builder: (context) => CustomPaint(
-                  painter: DonutChartPainter(
+              child: MouseRegion(
+                opaque: false,
+                cursor: (widget.enableHover && _hovered != null)
+                    ? SystemMouseCursors.click
+                    : SystemMouseCursors.basic,
+                onExit: widget.enableHover ? (_) => _setHovered(null) : null,
+                onHover: widget.enableHover
+                    ? (event) => _handleHover(
+                        event.localPosition,
+                        Size(chartWidth, chartHeight),
+                        datasetOrdered,
+                      )
+                    : null,
+                child: GestureDetector(
+                  onTapDown: (event) => _handTap(
+                    event.localPosition,
+                    Size(chartWidth, chartHeight),
                     datasetOrdered,
-                    context,
-                    animation: _animation,
-                    title: widget.title,
-                    customColors: widget.customColors,
-                    backGroundColor: widget.backGroundColor,
-                    showTitle: widget.showTitle,
-                    showCenterText: widget.showCenterText,
-                    showLabels: widget.showLabels,
-                    showLegend: widget.showLegend,
-                    showLines: widget.showLines,
-                    onTap: (DataItem value) => widget.onSectorTap(value),
+                  ),
+                  child: CustomPaint(
+                    painter: DonutChartPainter(
+                      datasetOrdered,
+                      context,
+                      animation: _animation,
+                      title: widget.title,
+                      customColors: widget.customColors,
+                      backGroundColor: widget.backGroundColor,
+                      showTitle: widget.showTitle,
+                      showCenterText: widget.showCenterText,
+                      showLabels: widget.showLabels,
+                      showLegend: widget.showLegend,
+                      showLines: widget.showLines,
+                      hoveredItem: _hovered,
+                      tappedItem: _tapped,
+
+                      onTap: (value) {
+                        if (widget.enableTapHighlight) {
+                          _setTapped(value);
+                        }
+                        widget.onSectorTap?.call(value);
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -241,6 +295,79 @@ class _DonutChartState extends State<DonutChart>
         ],
       ),
     );
+  }
+
+  void _setHovered(DataItem? value) {
+    if (!mounted) return;
+    if (identical(_hovered, value)) return;
+    setState(() {
+      _hovered = value;
+    });
+    widget.onSectorHover?.call(value);
+  }
+
+  void _setTapped(DataItem? value) {
+    if (!mounted) return;
+
+    final next = (widget.toggleTapHighlight && identical(_tapped, value))
+        ? null
+        : value;
+
+    if (identical(_tapped, next)) return;
+    setState(() {
+      _tapped = next;
+      widget.onSectorTap?.call(next);
+    });
+  }
+
+  void _handleHover(Offset localPosition, Size size, List<DataItem> dataset) {
+    final hovered = _hitTestSector(localPosition, size, dataset);
+    _setHovered(hovered);
+  }
+
+  void _handTap(Offset localPosition, Size size, List<DataItem> dataset) {
+    final hovered = _hitTestSector(localPosition, size, dataset);
+    _setTapped(hovered);
+  }
+
+  DataItem? _hitTestSector(Offset p, Size size, List<DataItem> dataset) {
+    if (dataset.isEmpty) return null;
+
+    double total = 0.0;
+    for (final di in dataset) {
+      total += di.value;
+    }
+    if (total <= 0.0) return null;
+
+    final t = _animation.value.clamp(0.0, 1.0);
+
+    final diameter = size.width * 0.85;
+    final center = Offset(size.width / 2.0, diameter / 2.0 + 60.0);
+    final v = p - center;
+    final dist = v.distance;
+
+    // The arc is drawn at radius r with a stroke; consider a generous ring
+    // thickness for hit-testing so hover feels natural.
+    final r = diameter / 2.0;
+    const hitStrokeWidth = 60.0;
+    final inner = r - hitStrokeWidth / 2.0;
+    final outer = r + hitStrokeWidth / 2.0;
+    if (dist < inner || dist > outer) return null;
+
+    var angle = math.atan2(v.dy, v.dx);
+    if (angle < 0) angle += math.pi * 2.0;
+
+    double start = 0.0;
+    for (final di in dataset) {
+      final sweepFull = (di.value / total) * math.pi * 2.0;
+      final sweep = sweepFull * t;
+      if (angle >= start && angle < start + sweep) {
+        return di;
+      }
+      start += sweep;
+    }
+
+    return null;
   }
 }
 
@@ -277,10 +404,16 @@ class DonutChartPainter extends CustomPainter {
   final bool showLines;
 
   /// Tap callback triggered when a sector is tapped.
-  final Function onTap;
+  final ValueChanged<DataItem?>? onTap;
 
   /// Animation driving the entry of the sectors.
   final Animation<double> animation;
+
+  /// Currently hovered item (desktop/web), used for highlight.
+  final DataItem? hoveredItem;
+
+  /// Currently tapped/highlighted item (mobile/desktop), used for highlight.
+  final DataItem? tappedItem;
 
   /// Creates a [DonutChartPainter].
   DonutChartPainter(
@@ -295,12 +428,14 @@ class DonutChartPainter extends CustomPainter {
     this.showLabels = true,
     this.showLegend = true,
     this.showLines = true,
-    required this.onTap,
+    this.hoveredItem,
+    this.tappedItem,
+    this.onTap,
   }) : super(repaint: animation);
 
   @override
   void paint(Canvas canvas, Size size) {
-    TouchyCanvas touchyCanvas = TouchyCanvas(context, canvas);
+    // TouchyCanvas touchyCanvas = TouchyCanvas(context, canvas);
 
     final palette = customColors.isEmpty ? colors : customColors;
 
@@ -352,7 +487,8 @@ class DonutChartPainter extends CustomPainter {
       final p = c + Offset(dx, dy);
 
       drawSector(
-        touchyCanvas,
+        canvas,
+        // touchyCanvas,
         di,
         di.color ?? palette[index % palette.length],
         rect,
@@ -393,8 +529,7 @@ class DonutChartPainter extends CustomPainter {
           legendPosition,
           di,
           total,
-          (di.color ?? palette[index % palette.length])
-              .withAlpha(metaAlpha),
+          (di.color ?? palette[index % palette.length]).withAlpha(metaAlpha),
           metaAlpha,
         );
         legendPosition += const Offset(0, 18);
@@ -409,10 +544,9 @@ class DonutChartPainter extends CustomPainter {
         c,
         'Total\n${total.toStringAsFixed(2)}',
         Theme.of(context).textTheme.bodyMedium!.copyWith(
-          color: Theme.of(context)
-              .colorScheme
-              .onPrimaryContainer
-              .withAlpha(metaAlpha),
+          color: Theme.of(
+            context,
+          ).colorScheme.onPrimaryContainer.withAlpha(metaAlpha),
           fontSize: 28.0,
         ),
         diameter * 0.6,
@@ -423,27 +557,41 @@ class DonutChartPainter extends CustomPainter {
 
   /// Draws a sector arc and registers tap handling.
   void drawSector(
-    TouchyCanvas touchyCanvas,
+    Canvas canvas,
+    // TouchyCanvas touchyCanvas,
     DataItem di,
     Color sectorColor,
     Rect rect,
     double startAngle,
     double sweepAngle,
   ) {
+    final isHighlighted =
+        identical(di, hoveredItem) || identical(di, tappedItem);
     final sectorPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeJoin = StrokeJoin.round
-      ..strokeWidth = di.selected ? 60.0 : 20.0
-      ..color = sectorColor;
+      ..strokeWidth = (di.selected ? 60.0 : 20.0) + (isHighlighted ? 8.0 : 0.0)
+      ..color = isHighlighted
+          ? sectorColor.withValues(alpha: sectorColor.a * 0.92)
+          : sectorColor;
 
-    touchyCanvas.drawArc(
+    canvas.drawArc(
       rect,
       startAngle,
       sweepAngle,
       false,
       sectorPaint,
-      onTapDown: (datails) => onTap(di),
+      // onTapDown: (datails) => onTap(di),
     );
+
+    // touchyCanvas.drawArc(
+    //   rect,
+    //   startAngle,
+    //   sweepAngle,
+    //   false,
+    //   sectorPaint,
+    //   onTapDown: (datails) => onTap(di),
+    // );
   }
 
   /// Draws the chart title.
@@ -488,18 +636,16 @@ class DonutChartPainter extends CustomPainter {
 
     final borderLabelPaint = Paint()
       ..strokeWidth = 1.0
-      ..color = Theme.of(context)
-          .colorScheme
-          .onSecondaryContainer
-          .withAlpha((50 * (alpha / 255.0)).round())
+      ..color = Theme.of(context).colorScheme.onSecondaryContainer.withAlpha(
+        (50 * (alpha / 255.0)).round(),
+      )
       ..style = PaintingStyle.fill;
 
     final labelPaint = Paint()
       ..strokeWidth = 1.0
-      ..color = Theme.of(context)
-          .colorScheme
-          .secondaryContainer
-          .withAlpha((70 * (alpha / 255.0)).round())
+      ..color = Theme.of(
+        context,
+      ).colorScheme.secondaryContainer.withAlpha((70 * (alpha / 255.0)).round())
       ..style = PaintingStyle.fill;
 
     drawTextCentered(
@@ -507,7 +653,9 @@ class DonutChartPainter extends CustomPainter {
       position,
       label,
       Theme.of(context).textTheme.bodyMedium!.copyWith(
-        color: Theme.of(context).colorScheme.onPrimaryContainer.withAlpha(alpha),
+        color: Theme.of(
+          context,
+        ).colorScheme.onPrimaryContainer.withAlpha(alpha),
         fontSize: 10.0,
         fontWeight: FontWeight.w900,
         textBaseline: TextBaseline.ideographic,
@@ -554,7 +702,9 @@ class DonutChartPainter extends CustomPainter {
     TextSpan textSpanPercent = TextSpan(
       text: '${((di.value / total) * 100).toStringAsFixed(2)} %',
       style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-        color: Theme.of(context).colorScheme.onPrimaryContainer.withAlpha(alpha),
+        color: Theme.of(
+          context,
+        ).colorScheme.onPrimaryContainer.withAlpha(alpha),
         fontSize: 14.0,
       ),
     );
@@ -562,7 +712,9 @@ class DonutChartPainter extends CustomPainter {
     TextSpan textSpan = TextSpan(
       text: '${di.label} - ${di.value.toStringAsFixed(2)}',
       style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-        color: Theme.of(context).colorScheme.onPrimaryContainer.withAlpha(alpha),
+        color: Theme.of(
+          context,
+        ).colorScheme.onPrimaryContainer.withAlpha(alpha),
         fontSize: 14.0,
       ),
     );

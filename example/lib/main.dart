@@ -77,7 +77,7 @@ class MainPage extends StatelessWidget {
                 datasetOrdering: DatasetOrdering.decrescent,
                 // Tapping a sector shows a small dialog with the selected item.
                 onSectorTap: (sectorValue) => _showDialog(
-                  'Item: ${sectorValue.label} - Quantity: ${sectorValue.value}',
+                  'Item: ${sectorValue!.label} - Quantity: ${sectorValue.value}',
                   context,
                 ),
               ),
@@ -91,6 +91,7 @@ class MainPage extends StatelessWidget {
                 dataset: itens,
                 showLabels: true,
                 showLegend: true,
+
                 datasetOrdering: DatasetOrdering.decrescent,
                 // Tapping a bar shows the selected item.
                 onBarTap: (barValue) => _showDialog(
@@ -110,10 +111,10 @@ class MainPage extends StatelessWidget {
                 showLabels: false,
                 showLegend: true,
                 datasetOrdering: DatasetOrdering.decrescent,
-                onSectorTap: (sectorValue) => _showDialog(
-                  'Item: ${sectorValue.label} - Quantity: ${sectorValue.value}',
-                  context,
-                ),
+                // onSectorTap: (sectorValue) => _showDialog(
+                //   'Item: ${sectorValue.label} - Quantity: ${sectorValue.value}',
+                //   context,
+                // ),
               ),
 
               // Bar chart demonstrating the same customisations.
@@ -131,6 +132,20 @@ class MainPage extends StatelessWidget {
                   'Item: ${barValue.label} - Quantity: ${barValue.value}',
                   context,
                 ),
+              ),
+              BarChart(
+                title: 'Fruits',
+                dataset: itens,
+                onBarHover: (item) {
+                  // item == null means the pointer left the bars
+                  debugPrint('hover: ${item?.label}');
+                },
+              ),
+
+              DonutChart(
+                title: 'Fruits',
+                dataset: itens,
+                onSectorHover: (item) => debugPrint('hover: ${item?.label}'),
               ),
             ],
           ),

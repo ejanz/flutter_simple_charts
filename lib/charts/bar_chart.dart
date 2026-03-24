@@ -6,8 +6,6 @@ import 'package:flutter_simple_charts/utils/enums.dart';
 import 'package:flutter_simple_charts/utils/lists.dart';
 import 'package:flutter_simple_charts/utils/types.dart';
 
-import 'package:touchable/touchable.dart';
-
 /// A bar chart widget that visualises categorical data as vertical bars.
 ///
 /// Supply a [dataset] of [DataItem] objects and the chart will render each item
@@ -29,18 +27,22 @@ class BarChart extends StatefulWidget {
     super.key,
     required this.dataset,
     this.title = '',
-    this.showTitle = true,
     this.height,
     this.width,
     this.maxWidth = 600.0,
     this.customColors = colors,
     this.backGroundColor,
+    this.showTitle = true,
     this.showLabels = true,
     this.showLegend = false,
     this.showLines = true,
     this.animate = true,
     this.animationDuration = const Duration(milliseconds: 900),
     this.animationCurve = Curves.easeOutCubic,
+    this.enableHover = true,
+    this.onBarHover,
+    this.enableTapHighlight = true,
+    this.toggleTapHighlight = true,
     this.onBarTap = _defaultOnTap,
     this.datasetOrdering,
   });
@@ -104,6 +106,28 @@ class BarChart extends StatefulWidget {
   /// Curve used by the entry animation.
   final Curve animationCurve;
 
+  /// Whether hovering with a mouse pointer highlights bars (desktop/web).
+  ///
+  /// Defaults to `true`.
+  final bool enableHover;
+
+  /// Callback invoked when the hovered bar changes (desktop/web).
+  ///
+  /// Called with the hovered [DataItem], or `null` when the pointer leaves the
+  /// chart or is not over any bar.
+  final ValueChanged<DataItem?>? onBarHover;
+
+  /// Whether tapping a bar highlights it (useful on mobile where hover
+  /// doesn't exist).
+  ///
+  /// Defaults to `true`.
+  final bool enableTapHighlight;
+
+  /// Whether tapping the already-highlighted bar clears the highlight.
+  ///
+  /// Defaults to `true`.
+  final bool toggleTapHighlight;
+
   /// Callback invoked when the user taps a bar.
   ///
   /// Receives the [DataItem] that corresponds to the tapped bar.
@@ -118,6 +142,9 @@ class _BarChartState extends State<BarChart>
   late final AnimationController _controller;
   late Animation<double> _animation;
 
+  DataItem? _hovered;
+  DataItem? _tapped;
+
   @override
   void initState() {
     super.initState();
@@ -127,7 +154,10 @@ class _BarChartState extends State<BarChart>
 
   void _configureAnimation({required bool restart}) {
     _controller.duration = widget.animationDuration;
-    _animation = CurvedAnimation(parent: _controller, curve: widget.animationCurve);
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: widget.animationCurve,
+    );
 
     if (!widget.animate) {
       _controller.value = 1.0;
@@ -215,24 +245,49 @@ class _BarChartState extends State<BarChart>
               height: chartHeight,
               width: chartWidth,
 
-              child: CanvasTouchDetector(
-                gesturesToOverride: [GestureType.onTapDown],
-                builder: (context) => CustomPaint(
-                  painter: BarChartPainter(
+              child: MouseRegion(
+                opaque: false,
+                cursor: (widget.enableHover && _hovered != null)
+                    ? SystemMouseCursors.click
+                    : SystemMouseCursors.basic,
+                onExit: widget.enableHover ? (_) => _setHovered(null) : null,
+                onHover: widget.enableHover
+                    ? (event) => _handleHover(
+                        event.localPosition,
+                        Size(chartWidth, chartHeight),
+                        datasetOrdered,
+                      )
+                    : null,
+                child: GestureDetector(
+                  onTapDown: (event) => _handleTap(
+                    event.localPosition,
+                    Size(chartWidth, chartHeight),
                     datasetOrdered,
-                    context,
-                    animation: _animation,
-                    title: widget.title,
-                    customColors: widget.customColors,
-                    backGroundColor: widget.backGroundColor,
-                    showTitle: widget.showTitle,
-                    showLabels: widget.showLabels,
-                    showLegend: widget.showLegend,
-                    showLines: widget.showLines,
-                    onTap: (DataItem value) => widget.onBarTap(value),
                   ),
-                  willChange: true,
-                  isComplex: true,
+                  child: CustomPaint(
+                    painter: BarChartPainter(
+                      datasetOrdered,
+                      context,
+                      animation: _animation,
+                      title: widget.title,
+                      customColors: widget.customColors,
+                      backGroundColor: widget.backGroundColor,
+                      showTitle: widget.showTitle,
+                      showLabels: widget.showLabels,
+                      showLegend: widget.showLegend,
+                      showLines: widget.showLines,
+                      hoveredItem: _hovered,
+                      tappedItem: _tapped,
+                      onTap: (DataItem value) {
+                        if (widget.enableTapHighlight) {
+                          _setTapped(value);
+                        }
+                        widget.onBarTap(value);
+                      },
+                    ),
+                    willChange: true,
+                    isComplex: true,
+                  ),
                 ),
               ),
             ),
@@ -240,6 +295,71 @@ class _BarChartState extends State<BarChart>
         ],
       ),
     );
+  }
+
+  void _setHovered(DataItem? value) {
+    if (!mounted) return;
+    if (identical(_hovered, value)) return;
+    setState(() {
+      _hovered = value;
+    });
+    widget.onBarHover?.call(value);
+  }
+
+  void _setTapped(DataItem? value) {
+    if (!mounted) return;
+
+    final next = (widget.toggleTapHighlight && identical(_tapped, value))
+        ? null
+        : value;
+
+    if (identical(_tapped, next)) return;
+    setState(() {
+      _tapped = next;
+      widget.onBarTap(next!);
+    });
+  }
+
+  void _handleHover(Offset localPosition, Size size, List<DataItem> dataset) {
+    final hovered = _hitTestBar(localPosition, size, dataset);
+    _setHovered(hovered);
+  }
+
+  void _handleTap(Offset localPosition, Size size, List<DataItem> dataset) {
+    final tapped = _hitTestBar(localPosition, size, dataset);
+    _setTapped(tapped);
+  }
+
+  DataItem? _hitTestBar(Offset p, Size size, List<DataItem> dataset) {
+    if (dataset.isEmpty) return null;
+
+    final t = _animation.value.clamp(0.0, 1.0);
+
+    final greaterDataset = dataset.reduce(
+      (dMax, d) => d.value > dMax.value ? d : dMax,
+    );
+
+    final double barWidth = size.width / (dataset.length * 1.25);
+    final double maxHeight = widget.showLegend
+        ? size.height - 30 - (dataset.length * 18)
+        : size.height - 30;
+
+    final usableHeight = math.max(1.0, maxHeight - 150);
+    final heightFactor = greaterDataset.value == 0.0
+        ? 1.0
+        : (greaterDataset.value / usableHeight);
+
+    for (int i = 0; i < dataset.length; i++) {
+      final fullTop = greaterDataset.value == 0.0
+          ? maxHeight
+          : (maxHeight - dataset[i].value / heightFactor);
+      final barTop = ui.lerpDouble(maxHeight, fullTop, t) ?? fullTop;
+      final x = (i * barWidth * 1.1) + 20;
+      final rect = Rect.fromLTRB(x, barTop, x + barWidth, maxHeight);
+      if (rect.contains(p)) return dataset[i];
+    }
+
+    return null;
   }
 }
 
@@ -275,6 +395,12 @@ class BarChartPainter extends CustomPainter {
   /// Tap callback triggered when a bar is tapped.
   final Function onTap;
 
+  /// Currently hovered item (desktop/web), used for highlight.
+  final DataItem? hoveredItem;
+
+  /// Currently tapped/highlighted item (mobile/desktop), used for highlight.
+  final DataItem? tappedItem;
+
   /// Animation driving the entry of the bars.
   final Animation<double> animation;
 
@@ -290,13 +416,13 @@ class BarChartPainter extends CustomPainter {
     this.showLabels = true,
     this.showLegend = true,
     this.showLines = true,
+    this.hoveredItem,
+    this.tappedItem,
     required this.onTap,
   }) : super(repaint: animation);
 
   @override
   void paint(Canvas canvas, Size size) {
-    TouchyCanvas touchyCanvas = TouchyCanvas(context, canvas);
-
     final palette = customColors.isEmpty ? colors : customColors;
 
     if (dataset.isEmpty) {
@@ -325,7 +451,7 @@ class BarChartPainter extends CustomPainter {
     drawLines(canvas, size, maxHeight);
 
     drawBars(
-      touchyCanvas,
+      canvas,
       paint,
       size,
       barWidth,
@@ -382,9 +508,9 @@ class BarChartPainter extends CustomPainter {
     }
   }
 
-  /// Draws the chart bars and wires up tap handling.
+  /// Draws the chart bars.
   void drawBars(
-    TouchyCanvas touchyCanvas,
+    Canvas canvas,
     Paint paint,
     Size size,
     double barWidth,
@@ -395,19 +521,50 @@ class BarChartPainter extends CustomPainter {
     List<Color> palette,
   ) {
     final usableHeight = math.max(1.0, maxHeight - 150);
-    final heightFactor =
-        greaterDataset.value == 0.0 ? 1.0 : (greaterDataset.value / usableHeight);
+    final heightFactor = greaterDataset.value == 0.0
+        ? 1.0
+        : (greaterDataset.value / usableHeight);
     for (int i = 0; i < dataset.length; i++) {
-      final fullTop =
-          greaterDataset.value == 0.0 ? maxHeight : (maxHeight - dataset[i].value / heightFactor);
+      final fullTop = greaterDataset.value == 0.0
+          ? maxHeight
+          : (maxHeight - dataset[i].value / heightFactor);
       final barTop = ui.lerpDouble(maxHeight, fullTop, t) ?? fullTop;
       double x = (i * barWidth * 1.1) + 20;
-      paint.color = dataset[i].color ?? palette[i % palette.length];
-      touchyCanvas.drawRect(
-        Rect.fromPoints(Offset(x, barTop), Offset(x + barWidth, maxHeight)),
-        paint,
-        onTapDown: (detail) => onTap(dataset[i]),
+      final baseColor = dataset[i].color ?? palette[i % palette.length];
+      final isHighlighted =
+          identical(dataset[i], hoveredItem) ||
+          identical(dataset[i], tappedItem);
+      paint.color = isHighlighted
+          ? baseColor.withValues(alpha: baseColor.a * 0.7)
+          : baseColor;
+      final rect = Rect.fromPoints(
+        Offset(x, barTop),
+        Offset(x + barWidth, maxHeight),
       );
+
+      canvas.drawRect(rect, paint);
+
+      if (isHighlighted) {
+        final outlinePaint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0
+          ..color = Theme.of(context).colorScheme.onPrimaryContainer.withValues(
+            alpha: Theme.of(context).colorScheme.onPrimaryContainer.a * 0.65,
+          );
+        // Draw outline using the raw canvas (hover doesn't need to be touch-aware).
+        canvas.drawRect(rect.deflate(0.5), outlinePaint);
+
+        drawLabel(
+          canvas,
+          size,
+          barWidth,
+          maxHeight,
+          dataset,
+          greaterDataset,
+          t,
+          palette,
+        );
+      }
     }
   }
 
@@ -422,24 +579,31 @@ class BarChartPainter extends CustomPainter {
     double t,
     List<Color> palette,
   ) {
+    bool isHighlighted = false;
+
     final usableHeight = math.max(1.0, maxHeight - 150);
-    final heightFactor =
-        greaterDataset.value == 0.0 ? 1.0 : (greaterDataset.value / usableHeight);
+    final heightFactor = greaterDataset.value == 0.0
+        ? 1.0
+        : (greaterDataset.value / usableHeight);
     final alpha = (((t - 0.65) / 0.35).clamp(0.0, 1.0) * 255).round();
     for (int i = 0; i < dataset.length; i++) {
-      final fullTop =
-          greaterDataset.value == 0.0
-              ? maxHeight
-              : (maxHeight - 10 - dataset[i].value / heightFactor);
+      final fullTop = greaterDataset.value == 0.0
+          ? maxHeight
+          : (maxHeight - 10 - dataset[i].value / heightFactor);
       final barTop = ui.lerpDouble(maxHeight, fullTop, t) ?? fullTop;
       double x = (i * barWidth * 1.1) + (barWidth / 2) + 15;
+
+      isHighlighted =
+          identical(dataset[i], hoveredItem) ||
+          identical(dataset[i], tappedItem);
 
       TextSpan label = TextSpan(
         text: dataset[i].label,
         style: TextStyle(
           fontSize: 14,
-          color: (dataset[i].color ?? palette[i % palette.length])
-              .withAlpha(alpha),
+          color: (dataset[i].color ?? palette[i % palette.length]).withAlpha(
+            alpha,
+          ),
         ),
       );
       final labelPainter = TextPainter(
@@ -453,7 +617,9 @@ class BarChartPainter extends CustomPainter {
       canvas.translate(center.dx, center.dy);
       canvas.rotate(-math.pi / 3);
       canvas.translate(-center.dx, -center.dy);
-      labelPainter.paint(canvas, Offset(center.dx, center.dy));
+      if (isHighlighted) {
+        labelPainter.paint(canvas, Offset(center.dx, center.dy));
+      }
       canvas.restore();
     }
   }
@@ -497,13 +663,16 @@ class BarChartPainter extends CustomPainter {
       final legendPaint = Paint()
         ..strokeWidth = 1.0
         ..style = PaintingStyle.fill
-        ..color =
-            (dataset[i].color ?? palette[i % palette.length]).withAlpha(alpha);
+        ..color = (dataset[i].color ?? palette[i % palette.length]).withAlpha(
+          alpha,
+        );
 
       TextSpan textSpanPercent = TextSpan(
         text: '${((dataset[i].value / total) * 100).toStringAsFixed(2)} %',
         style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-          color: Theme.of(context).colorScheme.onPrimaryContainer.withAlpha(alpha),
+          color: Theme.of(
+            context,
+          ).colorScheme.onPrimaryContainer.withAlpha(alpha),
           fontSize: 14.0,
         ),
       );
@@ -511,7 +680,9 @@ class BarChartPainter extends CustomPainter {
       TextSpan textSpan = TextSpan(
         text: '${dataset[i].label} - ${dataset[i].value.toStringAsFixed(2)}',
         style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-          color: Theme.of(context).colorScheme.onPrimaryContainer.withAlpha(alpha),
+          color: Theme.of(
+            context,
+          ).colorScheme.onPrimaryContainer.withAlpha(alpha),
           fontSize: 14.0,
         ),
       );
